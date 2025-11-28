@@ -14,8 +14,9 @@ g_points = [-sqrt(1/3), sqrt(1/3)];
 for i = 1:2
     for j = 1:2
         xi = g_points(i); eta = g_points(j);
-        [N, dN_dxi, dN_deta] = obj.getShapeFunctions(xi, eta);
-
+        [N,der ] = obj.fmisoq8(xi, eta);
+        dN_dxi=der(1,:); dN_deta=der(2,:);
+        
         % --- 1. Geometry & Jacobian (Same as Linear) ---
         J_vec = [0,0,0; 0,0,0];
         V3_int = zeros(1,3);
