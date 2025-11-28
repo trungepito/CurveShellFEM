@@ -1,0 +1,27 @@
+classdef FEM_Solver < handle
+    properties
+        Model           % Reference to Preprocessor object
+        GlobalK         % Stiffness Matrix
+        GlobalKg        % Geometric Stiffness Matrix (for buckling)
+        GlobalF         % Force Vector
+        U               % Displacement Vector (Solution)
+        BucklingFactors % Eigenvalues
+    end
+
+    methods
+        function obj = FEM_Solver(preprocessorObj)
+            obj.Model = preprocessorObj;
+        end
+    end
+    methods
+        solveStatic(obj)
+        solveBuckling(obj, numModes)
+    end
+
+    methods(Access = private)
+        assembleK(obj)
+        assembleKg(obj)
+        applyLoads(obj)
+        applyConstraints(obj)
+    end
+end
