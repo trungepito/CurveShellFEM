@@ -16,6 +16,7 @@ classdef FEM_Solver < handle
     methods
         solveStatic(obj)
         solveBuckling(obj, numModes)
+        solveNonLinear(obj, numLoadSteps, maxIter, tol)
     end
 
     methods(Access = private)
@@ -23,5 +24,6 @@ classdef FEM_Solver < handle
         assembleKg(obj)
         applyLoads(obj)
         applyConstraints(obj)
+        [KT, F_int] = assembleTangentSystem(obj)
     end
 end
