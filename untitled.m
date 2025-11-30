@@ -6,7 +6,7 @@ clear; clc;
 Pre = FEM_Preprocessor(2e11, 0.3, 0.05); 
 
 % Generate Mesh (Quarter Cylinder)
-Pre.generateCylinderMesh(100, 20, 20, 20);
+Pre.generateCylinderMesh(10, 50, 20, 20);
 
 % Apply Boundary Conditions (Fix Bottom Edge)
 % Assuming node mapping logic is internal or known...

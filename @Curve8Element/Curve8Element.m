@@ -17,12 +17,14 @@ classdef Curve8Element
     methods(Static)
         [N, dN_dxi, dN_deta] = getShapeFunctions( xi, eta)
         [fun,der] = fmisoq8(xi,eta)
+        
     end
     methods
         [D_mb, D_s] = getConstitutiveMatrix(obj)
         Ke = computeStiffnessMatrix(obj)
         Kg = computeGeometricStiffness(obj, u_elem)
         stresses = computeStresses(obj, u_elem)
+        [Bm,Bb,Bs,detJ]=formB(obj,xi,eta)
     end
     methods
         [KT, F_int] = computeTangentStiffnessAndForce(obj, u_elem)
