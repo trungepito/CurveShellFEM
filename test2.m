@@ -159,8 +159,8 @@ fprintf('Error: %.2f%%\n', err_disp);
 
 % Let's pick the sample node again.
 % Calculate stress manually for this verification
-[valX, ~] = Post.recoverNodalSmooth('SigmaX', 'Top');
-[valY, ~] = Post.recoverNodalSmooth('SigmaY', 'Top');
+valX = Post.recoverNodalSmooth('SigmaX', 'Top');
+valY = Post.recoverNodalSmooth('SigmaY', 'Top');
 
 % At the sample node, check its angle
 sx = nodes(sample_node, 1); sy = nodes(sample_node, 2);

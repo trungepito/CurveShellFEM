@@ -6,7 +6,7 @@ clear; clc;
 Pre = FEM_Preprocessor(2e11, 0.3, 0.05); 
 
 % Generate Mesh (Quarter Cylinder)
-Pre.generateCylinderMesh(10, 50, 20, 20);
+Pre.generateCylinderMesh(10, 10, 100, 100);
 
 % Apply Boundary Conditions (Fix Bottom Edge)
 % Assuming node mapping logic is internal or known...
@@ -17,8 +17,8 @@ for i = 1:size(nodes,1)
         Pre.addConstraint(i, 1); % Fix u
         Pre.addConstraint(i, 2); % Fix v
         Pre.addConstraint(i, 3); % Fix w
-        % Pre.addConstraint(i, 4); % Fix alpha
-        % Pre.addConstraint(i, 5); % Fix beta
+        Pre.addConstraint(i, 4); % Fix alpha
+        Pre.addConstraint(i, 5); % Fix beta
     end
 end
 
@@ -43,7 +43,7 @@ Post = FEM_Postprocessor(Pre, Sol);
 
 % Visualization
 Post.plotField('Displacement', 'Top'); % Scale 100x
-% Post.plotField('vonMises', 'Top'); % Scale 100x
+Post.plotField('vonMises', 'Top'); % Scale 100x
 % Post.plotPrincipalVectors()
 % Post.plotVonMises();
 

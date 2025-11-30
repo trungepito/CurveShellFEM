@@ -1,8 +1,13 @@
 function [val, tensor] = evaluatePoint(obj, elObj, u_el, xi, eta, z, type, elemID)
 % Helper to calculate physics at a specific (xi, eta, z)
-
+val=[];
+tensor=[];
 % 1. Kinematics
-[~, dN_dxi, dN_deta] = elObj.getShapeFunctions(xi, eta);
+[Bm,Bb,Bs,~]=elObj.formB(xi,eta);
+% 3. Compute Strains
+eps_m = Bm * u_el; % [ex, ey, gxy]
+kappa = Bb * u_el; % [kx, ky, kxy]
+gamma = Bs * u_el; % [gyz, gxz]
 % ... (Recalculate J, Bm, Bb, Bs, etc here) ...
 % To save space, assuming a helper method "getStrainAtPoint" exists or copy logic
 % [eps_m, kappa, gamma] = elObj.getStrains(xi, eta, u_el);
@@ -11,10 +16,7 @@ function [val, tensor] = evaluatePoint(obj, elObj, u_el, xi, eta, z, type, elemI
 % You must copy the B-Matrix generation logic here
 % or make it a public method in Curve8Element.
 % Let's assume we have calculated strains:
-% eps_total = eps_m + z * kappa;
-
-% Placeholder Logic for the example:
-eps_total = [0;0;0]; % Replace with real calculation!
+eps_total = eps_m + z * kappa;
 
 % 2. Constitutive
 D_el = elObj.getConstitutiveMatrix();

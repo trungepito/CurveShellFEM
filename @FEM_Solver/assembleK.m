@@ -9,6 +9,8 @@ nTotalDofs = numNodes * 5;
 
 % Allocate sparse matrix triplet arrays for speed
 % 40x40 = 1600 entries per element
+nz_per_elem = 40*40;
+% total_nz = nElems * nz_per_elem;
 estnz = 1600 * numElems;
 I_idx = zeros(estnz, 1);
 J_idx = zeros(estnz, 1);
@@ -31,21 +33,33 @@ for e = 1:numElems
     % Map Local DOFs to Global DOFs
     sctr = zeros(1, 40);
     for n = 1:8
-        globalNode = node_indices(n);
-        start_dof = (globalNode - 1) * 5;
+        start_dof = (node_indices(n) - 1) * 5;
         local_start = (n - 1) * 5;
         sctr(local_start+1 : local_start+5) = start_dof + (1:5);
     end
 
     % Flatten into triplets
-    for r = 1:40
-        for c = 1:40
-            count = count + 1;
-            I_idx(count) = sctr(r);
-            J_idx(count) = sctr(c);
-            V_val(count) = Ke(r,c);
-        end
+    aa=2;
+    switch aa
+        case 1
+            for r = 1:40
+                for c = 1:40
+                    count = count + 1;
+                    I_idx(count) = sctr(r);
+                    J_idx(count) = sctr(c);
+                    V_val(count) = Ke(r,c);
+                end
+            end
+            % Fill Arrays
+        case 2
+            [ii,jj]=meshgrid(sctr,sctr);
+            range = count + (1:nz_per_elem);
+            I_idx(range) = ii(:);
+            J_idx(range) = jj(:);
+            V_val(range) = Ke(:);
+            count = count + nz_per_elem;
     end
+
 end
 
 % Create Sparse Matrix
