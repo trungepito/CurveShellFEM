@@ -4,18 +4,18 @@ Ke = zeros(40, 40); % 8 nodes * 5 DOFs
 % Gaussian Quadrature
 % 3x3 rule is recommended for 8-node elements to prevent hour-glassing
 % though 2x2 is sometimes used for shear to prevent locking.
-% Here we use 3x3 for simplicity.
-g_points = [-sqrt(0.6), 0, sqrt(0.6)];
-g_weights = [5/9, 8/9, 5/9];
-
+% Here we use 3x3 for simplicity
 [D_mb, D_s] = obj.getConstitutiveMatrix();
+Gpoint_mb=3;% number of gauss points for Membrane and Bending term
+Gpoint_s=2; % number of gauss points for Shear term
 
-for i = 1:3
-    for j = 1:3
+[g_points,g_weights]=MathFEM.Gauss_p(Gpoint_mb);
+for i = 1:Gpoint_mb
+    for j = 1:Gpoint_mb
         xi = g_points(i);
         eta = g_points(j);
         w = g_weights(i) * g_weights(j);
-        [Bm,Bb,Bs,detJ]=obj.formB(xi,eta);
+        [Bm,Bb,detJ]=obj.formBmb(xi,eta);
         % Integration through thickness
         % Stiffness = B_m' * D_m * B_m * t + B_b' * D_b * B_b * (t^3/12) + Shear
 
@@ -28,11 +28,32 @@ for i = 1:3
         Kb = Bb' * D_mb * Bb * (h^3 / 12);
 
         % Shear Stiffness (Constant through thickness * shear correction)
-        Ks = Bs' * D_s * Bs * h;
+        % Ks = Bs' * D_s * Bs * h;
 
         % Total Element Stiffness contribution at this Gauss point
-        Ke = Ke + (Km + Kb + Ks) * detJ * w;
+        Ke = Ke + (Km + Kb ) * detJ * w;
     end
 end
+
+% Shear term
+[g_points,g_weights]=MathFEM.Gauss_p(Gpoint_s);
+for i = 1:Gpoint_s
+    for j = 1:Gpoint_s
+        xi = g_points(i);
+        eta = g_points(j);
+        w = g_weights(i) * g_weights(j);
+        [Bs,detJ]=obj.formBs(xi,eta);
+        % Integration through thickness
+        % Stiffness = B_m' * D_m * B_m * t + B_b' * D_b * B_b * (t^3/12) + Shear
+        h = obj.Thickness;
+        % Membrane Stiffness (Constant through thickness)
+        % Bending Stiffness (z^2 integral -> h^3/12)
+        % Shear Stiffness (Constant through thickness * shear correction)
+        Ks = Bs' * D_s * Bs * h;
+        % Total Element Stiffness contribution at this Gauss point
+        Ke = Ke + Ks* detJ * w;
+    end
+end
+
 end
 

@@ -19,6 +19,8 @@ classdef FEM_Preprocessor < handle
     end
     methods
         generateCylinderMesh(obj, R, L, Nu, Nv)
+        generateFlatPlate(obj, Lx, Ly, Nu, Nv)
+        applyUniformPressure(obj, pressureVec)
         computeNormals(obj)
     end
 

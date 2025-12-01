@@ -5,6 +5,7 @@ classdef FEM_Solver < handle
         GlobalKg        % Geometric Stiffness Matrix (for buckling)
         GlobalF         % Force Vector
         U               % Displacement Vector (Solution)
+        ModeShapes      % Buckling solutions
         BucklingFactors % Eigenvalues
     end
 

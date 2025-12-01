@@ -73,15 +73,15 @@ for i = 1:size(nodes, 1)
     if abs(y) < 1e-4
         Pre.BCs = [Pre.BCs; i, 2]; % Fix V (Y-disp)
         Pre.BCs = [Pre.BCs; i, 4]; % Fix Rot X
-        Pre.BCs = [Pre.BCs; i, 5]; % Fix Rot Z
+        Pre.BCs = [Pre.BCs; i, 6]; % Fix Rot Z
     end
 
     % Symmetry Plane Y (where X=0? At X=0, normal is X. Fix U, RotY, RotZ)
     % This corresponds to nodes at (0, R, z)
     if abs(x) < 1e-4
         Pre.BCs = [Pre.BCs; i, 1]; % Fix U (X-disp)
-        Pre.BCs = [Pre.BCs; i, 4]; % Fix Rot Y
-        Pre.BCs = [Pre.BCs; i, 5]; % Fix Rot Z
+        Pre.BCs = [Pre.BCs; i, 6]; % Fix Rot Y
+        Pre.BCs = [Pre.BCs; i, 6]; % Fix Rot Z
     end
 
     % Bottom Edge (Z=0): Sliding support (Fix W only)
@@ -156,11 +156,13 @@ fprintf('Error: %.2f%%\n', err_disp);
 % Stress is in Global Cartesian. We need to rotate to Cylindrical.
 % At symmetry X (y=0), Hoop is Global Y-Stress (SigmaY).
 % At symmetry Y (x=0), Hoop is Global X-Stress (SigmaX).
-
+opts.layer='Top';
+opts.scale=0.1;
+opts.Nummode=1;
 % Let's pick the sample node again.
 % Calculate stress manually for this verification
-valX = Post.recoverNodalSmooth('SigmaX', 'Top');
-valY = Post.recoverNodalSmooth('SigmaY', 'Top');
+valX = Post.recoverNodalSmooth('SigmaX', opts);
+valY = Post.recoverNodalSmooth('SigmaY', opts);
 
 % At the sample node, check its angle
 sx = nodes(sample_node, 1); sy = nodes(sample_node, 2);
@@ -178,20 +180,18 @@ fprintf('Error: %.2f%%\n', err_strs);
 
 % C. Visuals
 figure;
-subplot(1,2,1);
-Post.plotField('Displacement', 'Top');
+Post.plotField('Displacement', opts);
 title('Radial Expansion');
 
-subplot(1,2,2);
 % Plot Sigma Y (Hoop Stress approx at Y=0 plane)
-Post.plotField('SigmaY', 'Top');
+Post.plotField('SigmaY', opts);
 title('Sigma Y (Hoop Stress at Bottom Edge)');
 
 % Show Load Vectors to confirm direction
 figure; hold on; axis equal;
 patch('Vertices', nodes, 'Faces', Pre.Mesh.Elements(:,[1,2,3,4]), 'FaceColor', 'w', 'EdgeColor', 'b');
 % Plot only 10% of loads to avoid clutter
-Lds = Pre.Loads(1:5:end, :);
+Lds = Pre.Loads(1:6:end, :);
 quiver3(nodes(Lds(:,1),1), nodes(Lds(:,1),2), nodes(Lds(:,1),3), ...
     (Lds(:,2)==1).*Lds(:,3), (Lds(:,2)==2).*Lds(:,3), (Lds(:,2)==3).*Lds(:,3), ...
     5e-5, 'r', 'LineWidth', 2);

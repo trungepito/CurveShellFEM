@@ -7,7 +7,7 @@ K_mod = obj.GlobalK;
 % This implies u = 0.
 
 if ~isempty(obj.Model.BCs)
-    fixed_dofs = (obj.Model.BCs(:,1)-1)*5 + obj.Model.BCs(:,2);
+    fixed_dofs = (obj.Model.BCs(:,1)-1)*6 + obj.Model.BCs(:,2);
     unique_fixed = unique(fixed_dofs);
 
     % Method: Penalty (Simpler for Sparse) or Identity Replacement
@@ -15,7 +15,7 @@ if ~isempty(obj.Model.BCs)
 
     % 1. Set diagonal to very large number (Penalty method is safer for pure sparse)
     % Or explicit replacement:
-    penalty = max(abs(diag(K_mod))) * 1e4;
+    penalty = max(abs(diag(K_mod))) * 1e12;
 
     for i = 1:length(unique_fixed)
         dof = unique_fixed(i);

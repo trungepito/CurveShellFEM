@@ -28,8 +28,8 @@ for e = 1:size(elems, 1)
     el_norms = obj.Model.Mesh.Normals(idx, :);
 
     % Element Displacements
-    u_el = zeros(40,1);
-    for n=1:8, u_el((n-1)*5+(1:5)) = U((idx(n)-1)*5+(1:5)); end
+    u_el = zeros(48,1);
+    for n=1:8, u_el((n-1)*6+(1:6)) = U((idx(n)-1)*6+(1:6)); end
 
     % Create temporary element to do the math
     % Note: If Plastic, we need history. For plotting, we might
@@ -39,7 +39,12 @@ for e = 1:size(elems, 1)
     % For plotting, we create a 'Linear' element just to access
     % B-matrices at NODAL locations (xi, eta = -1, 1...)
     elObj = Curve8Element(el_nodes, el_norms, mat.t, mat.E, mat.nu);
-
+    % Transform back from the global to local system!
+    T_hybrid = elObj.Trans_T();
+    u_el_l=T_hybrid*u_el;
+    u_el_l(6:6:end)=[];
+    per_40=blkdiag(elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5);
+    u_el=per_40*u_el_l;
     % Loop over the 8 nodes of this element
     % Natural coords of the 8 nodes
     xi_n  = [-1,  1,  1, -1,  0,  1,  0, -1];

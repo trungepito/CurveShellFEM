@@ -3,7 +3,8 @@ function [val, tensor] = evaluatePoint(obj, elObj, u_el, xi, eta, z, type, elemI
 val=[];
 tensor=[];
 % 1. Kinematics
-[Bm,Bb,Bs,~]=elObj.formB(xi,eta);
+[Bm,Bb,~]=elObj.formBmb(xi,eta);
+[Bs,~]=elObj.formBs(xi,eta);
 % 3. Compute Strains
 eps_m = Bm * u_el; % [ex, ey, gxy]
 kappa = Bb * u_el; % [kx, ky, kxy]

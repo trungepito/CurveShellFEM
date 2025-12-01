@@ -11,7 +11,8 @@ xi = 0; eta = 0;
 % Get Shape functions and B-matrices
 % [N, der] = obj.fmisoq8(xi, eta);
 [D_mb, D_s] = obj.getConstitutiveMatrix();
-[Bm,Bb,Bs,~]=obj.formB(xi,eta);
+[Bm,Bb,~]=obj.formBmb(xi,eta);
+[Bs,~]=obj.formBs(xi,eta);
 % 3. Compute Strains
 eps_m = Bm * u_elem; % [ex, ey, gxy]
 kappa = Bb * u_elem; % [kx, ky, kxy]

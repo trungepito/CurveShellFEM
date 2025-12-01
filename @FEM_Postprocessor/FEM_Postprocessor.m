@@ -12,10 +12,10 @@ classdef FEM_Postprocessor < handle
     end
     
     methods
-        plotField(obj, fieldType, layer)
+        plotField(obj, fieldType, opts)
         values = recoverNodalSmooth(obj, type, layer)
         [val, tensor] = evaluatePoint(obj, elObj, u_el, xi, eta, z, type, elemID)
-        renderPlot(obj, values, titleStr)
+        renderPlot(obj, values, fieldType,layer,scale)
         plotPrincipalVectors(obj, layer)
     end
 
