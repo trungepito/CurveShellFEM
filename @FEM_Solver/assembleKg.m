@@ -32,13 +32,7 @@ for e = 1:numElems
         g_node = idx(n);
         u_el((n-1)*6 + (1:6)) = obj.U((g_node-1)*6 + (1:6));
     end
-
     elObj = Curve8Element(el_coords, el_normals, mat.t, mat.E, mat.nu);
-    T_hybrid = elObj.Trans_T();
-    u_el_l=T_hybrid*u_el;
-    u_el_l(6:6:end)=[];
-    per_40=blkdiag(elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5,elObj.per_5);
-    u_el=per_40*u_el_l;
     Kg_e = elObj.computeGlobalMatrix6DOF(u_el); % using the same routine to transfrom 5DOFs-->6DOFs
 
     % Scatter

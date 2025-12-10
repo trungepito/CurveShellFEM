@@ -24,7 +24,7 @@ Pre = FEM_Preprocessor(E, nu, t);
 
 % Generate Mesh (10x10 Elements)
 % Sufficient for 8-node convergence
-Pre.generateFlatPlate(L, L, 10, 10);
+Pre.generateFlatPlate(L, L, 20, 20);
 
 %% 3. Boundary Conditions (Simple Support)
 % Nodes are at X=0, X=L, Y=0, Y=L.
@@ -81,11 +81,17 @@ for i = 1:size(nodes,1)
     end
 end
 % Pre.applyUniformPressure([0, 0, q]);
-
+% 
 %% 5. Solution
 Sol = FEM_Solver(Pre);
 Sol.solveStatic();
-Sol.solveBuckling(5);
+Sol.solveBuckling(10);
+numLoadSteps = 20; 
+maxIter = 100; 
+tol = 1e-6;
+Sol2=FEM_Solver_NL(Pre);
+Sol2.solveNonLinear(numLoadSteps, maxIter, tol);
+
 
 %% 6. Validation
 % Find Center Node (Max Deflection)
@@ -94,7 +100,13 @@ dist_to_center = vecnorm(nodes - [L/2, L/2, 0], 2, 2);
 
 % Get Z-displacement (DOF 3)
 % Sol.U is structured as [u1, v1, w1, tx1, ty1, tz1, u2...]
-w_fem = Sol.U( (centerNodeID-1)*6 + 3 );
+% U=Sol2.U
+try
+    w_fem = Sol.U((centerNodeID-1)*6 + 3 );
+catch
+    w_fem = Sol2.U((centerNodeID-1)*6 + 3 );
+end
+
 
 fprintf('FEM Max Deflection:         %.6f mm\n', w_fem * 1000);
 error_pct = abs((w_fem - w_theory)/w_theory) * 100;
@@ -104,9 +116,9 @@ fprintf('Error:                      %.2f%%\n', error_pct);
 Post = FEM_Postprocessor(Pre, Sol);
 opts.layer='Top';
 opts.scale=0.1;
-opts.Nummode=1;
+opts.Nummode=2;
 % Plot Z-Displacement
-figure;
+% figure;
 Post.plotField('Displacement', opts);
 title('Displacement Magnitude');
 view(3);
@@ -116,10 +128,12 @@ view(3);
 Post.plotField('SigmaX', opts);
 title('Bending Stress \sigma_x (Top)');
 colormap jet;
-
+for iii=1:10
+    opts.Nummode=iii;
 Post.plotField('Buckling', opts);
 title('VonMises Stress \sigma_{eqv} (Bot)');
 colormap jet;
+end
 % Plot Centerline Deflection
 % figure;
 % y_mid_nodes = find(abs(nodes(:,2) - L/2) < 0.01);

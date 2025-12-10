@@ -52,14 +52,12 @@ for i = 1:nGauss
         % Fill G Matrix
         for n = 1:8
             idx = (n-1)*5 + (1:5);
-
             dN_dx = dNd_local(1,n);
             dN_dy = dNd_local(2,n);
-
+            
             % We approximate that buckling is driven by derivatives of translations
             % projected onto the local normal (w).
             % u,v,w_local approx = theta(i,1)*u + theta(i,2)*v + theta(i,3)*w
-
             % Terms for u, v, w
             G(1,1, idx(1:3)) = dN_dx * theta(1, :); % Gux
             G(1,2, idx(1:3)) = dN_dy * theta(1, :); % Guy

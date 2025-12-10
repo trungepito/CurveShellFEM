@@ -18,8 +18,10 @@ fprintf('[Solver] Solving Eigenvalue Problem...\n');
 % Solve K * phi = lambda * (-Kg) * phi
 opts.disp=0;
 [U, D] = eigs(-Kg_red,K_red, numModes, 'LR', opts);
+
+% some special treatment maybe needed if Kg , Kred is not symmetric matrix
 obj.ModeShapes = U;
-obj.BucklingFactors = diag(D);
+obj.BucklingFactors = 1./diag(D);
 end
 % Store the mode shapes and buckling factors in the object
 

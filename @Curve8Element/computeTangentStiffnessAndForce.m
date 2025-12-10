@@ -7,24 +7,21 @@ F_int = zeros(40, 1);
 
 [D_mb, D_s] = obj.getConstitutiveMatrix();
 h = obj.Thickness;
+Gpoint=2;% number of gauss points for Membrane and Bending term
 
+[g_points,g_weights]=MathFEM.Gauss_p(Gpoint);
 % Gauss Integration (2x2 is standard for nonlinear loops to save time)
-g_points = [-sqrt(1/3), sqrt(1/3)];
+% g_points = [-sqrt(1/3), sqrt(1/3)];
 
-for i = 1:2
-    for j = 1:2
+for i = 1:Gpoint
+    for j = 1:Gpoint
+        w=g_weights(i)*g_weights(j);
         xi = g_points(i); eta = g_points(j);
         [N,der ] = obj.fmisoq8(xi, eta);
-        dN_dxi=der(1,:); dN_deta=der(2,:);
-        
+        % dN_dxi=der(1,:); dN_deta=der(2,:);
         % --- 1. Geometry & Jacobian (Same as Linear) ---
-        J_vec = [0,0,0; 0,0,0];
-        V3_int = zeros(1,3);
-        for n = 1:8
-            J_vec(1,:) = J_vec(1,:) + dN_dxi(n) * obj.Coords(n,:);
-            J_vec(2,:) = J_vec(2,:) + dN_deta(n) * obj.Coords(n,:);
-            V3_int = V3_int + N(n) * obj.Normals(n,:);
-        end
+        J_vec=der*obj.Coords;
+        V3_int=N*obj.Normals;
         V3_int = V3_int/norm(V3_int);
         v1 = J_vec(1,:)/norm(J_vec(1,:)); v3 = V3_int;
         v2 = cross(v3,v1); v2 = v2/norm(v2); v1 = cross(v2,v3);
@@ -33,8 +30,8 @@ for i = 1:2
         J_loc = [dot(J_vec(1,:),v1), dot(J_vec(1,:),v2);
             dot(J_vec(2,:),v1), dot(J_vec(2,:),v2)];
         detJ = det(J_loc);
-        invJ = inv(J_loc);
-        dNd_local = invJ * [dN_dxi; dN_deta];
+        invJ = J_loc\eye(2);
+        dNd_local = invJ * der;
 
         % --- 2. Construct Linear B-Matrices (B0) ---
         % (Simplified reconstruction of Bm, Bb, Bs from previous code)
@@ -48,7 +45,7 @@ for i = 1:2
             V3_n = obj.Normals(n,:);
             if abs(dot(V3_n,[0,1,0]))<0.9, v1n=cross([0,1,0],V3_n); else, v1n=cross([1,0,0],V3_n); end
             v1n=v1n/norm(v1n); v2n=cross(V3_n,v1n);
-            T_node = [theta*v1n', theta*v2n']; % 3x2 projection
+            % T_node = [theta*v1n', theta*v2n']; % 3x2 projection
 
             dN_dx = dNd_local(1,n); dN_dy = dNd_local(2,n);
 
@@ -58,7 +55,7 @@ for i = 1:2
             Bm0(3, idx(1:3)) = dN_dy * theta(1,:) + dN_dx * theta(2,:);
 
             % Linear Bending Bb0 (Simplified for brevity)
-            P = -theta*v2n'; Q = theta*v1n';
+            P = theta*v1n'; Q = -theta * v2n';
             Bb0(1, idx(4:5)) = [dN_dx*P(1), dN_dx*Q(1)];
             Bb0(2, idx(4:5)) = [dN_dy*P(2), dN_dy*Q(2)];
             Bb0(3, idx(4:5)) = [dN_dy*P(1)+dN_dx*P(2), dN_dy*Q(1)+dN_dx*Q(2)];
@@ -107,7 +104,7 @@ for i = 1:2
         f_b = Bb0' * M_stress;
         f_s = Bs0' * Q_stress;
 
-        F_int = F_int + (f_m + f_b + f_s) * detJ;
+        F_int = F_int + (f_m + f_b + f_s) * detJ*w;
 
         % --- 5. Tangent Stiffness Matrix (KT) ---
         % KT = K_material + K_geometric
@@ -122,7 +119,7 @@ for i = 1:2
         S_mtx = [N_stress(1), N_stress(3); N_stress(3), N_stress(2)];
         Kg = G' * S_mtx * G;
 
-        KT = KT + (Km + Kb + Ks + Kg) * detJ;
+        KT = KT + (Km + Kb + Ks + Kg) * detJ*w;
     end
 end
 end
