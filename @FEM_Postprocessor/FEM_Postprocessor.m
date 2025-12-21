@@ -17,6 +17,10 @@ classdef FEM_Postprocessor < handle
         [val, tensor] = evaluatePoint(obj, elObj, u_el, xi, eta, z, type, elemID)
         renderPlot(obj, values, fieldType,opts)
         plotPrincipalVectors(obj, layer)
+        plotLoadDisplacement(obj, nodeID, dofID)
+        plotReactionDispCurve(obj, controlNodeID, controlDOF)
+        animateDisplacement(obj, scale, speed)
+        animateScenario(obj, plotNodeID, plotDOF, scaleFactor, speed)
     end
 
 end

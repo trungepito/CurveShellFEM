@@ -22,7 +22,7 @@ switch fieldType
             % Calculate scale to make deformation visible but not crazy
             max_u = max(abs(obj.Solver.U));
             model_dim = max(max(nodes)) - min(min(nodes));
-            if max_u > 0, scale = 0.01 * model_dim / max_u; end
+            if max_u > 0, scale = scale * model_dim / max_u; end
         end
         for i=1:size(nodes,1)
             def_nodes(i,:) = nodes(i,:) + obj.Solver.U((i-1)*6+1:(i-1)*6+3)' * scale;

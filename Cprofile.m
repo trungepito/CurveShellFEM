@@ -1,8 +1,8 @@
 % EXAMPLE_Extrusion_C_Section.m
-clear; clc;
+clear; clc; close all
 
 % 1. Init
-Pre = FEM_Preprocessor_v2(2e11, 0.33, 4);
+Pre = FEM_Preprocessor_v2(2e5, 0.3, 5);
 
 % 2. Define 2D Profile (C-Section in X-Y Plane)
 % Dimensions
@@ -50,34 +50,41 @@ direction = [0, 0, 1];
 % OPTION B: Variable Extrusion (Stiffeners Logic)
 % Let's create a beam with different mesh densities or lengths
 % Segments: 0.1m, 0.8m, 0.1m (Modeling end effects)
-specs = [20000]; 
+specs = [2000]; 
 % Mesh Density per segment: 5 elems, 20 elems, 5 elems
-meshZ = [20,2];
+meshZ = [30];
 
 fprintf('Extruding Profile...\n');
 Pre.createExtrusion(nodes, segments, direction, specs, meshZ);
 
 % 4. BCs and Loads
 % Fix Root (Z=0)
-Pre.addBC('plane', [3, 0.0], 1:3);
-Pre.addBC('plane', [3, sum(specs)], [1]);
+Pre.addBC('plane', [3, 0.0], 1:6);
+Pre.addBC('plane', [3, sum(specs)], 1:2);
 
 % Load at Tip (Z=3)
 % Select nodes via plane selector
 tipNodes = Pre.selectNodesOnPlane(3, specs(1));
-Pre.addNodalLoad(tipNodes, 3, -1000); % Distributed point load
+Pre.addNodalLoad(tipNodes, 3, -0.7*1000); % Distributed point load
 
 % 5. Solve & Plot
 Sol = FEM_Solver(Pre);
 Sol.solveStatic();
 Sol.solveBuckling(10);
+
+SolNLopt.numLoadSteps=20;
+SolNLopt.maxIter = 100; 
+SolNLopt.tol = 1e-6;
+SolNLopt.linesearch=0;
+Sol2=FEM_Solver_NL(Pre);
+Sol2.solveNonLinear(SolNLopt);
 %%
 Post = FEM_Postprocessor(Pre, Sol);
 opts.layer='Top';
-opts.scale=1;
+opts.scale=0.1;
 opts.Nummode=1;
-% Post.plotField('Displacement', opts);
-% title('Extruded C-Section');
+Post.plotField('Displacement', opts);
+title('Extruded C-Section');
 % 
 for ii=1:10
 opts.Nummode=ii;   
@@ -98,4 +105,9 @@ end
 % % colormap jet;
 
 % Post.plotField('VonMises', opts);
-% title('Von \sigma_x (Top)');
+Post2 = FEM_Postprocessor(Pre, Sol2);
+Post2.plotLoadDisplacement(tipNodes(1), 3); % Z-disp
+% 
+Post2.plotField('Displacement', opts);
+title('Displacement Magnitude NL');
+view(3);

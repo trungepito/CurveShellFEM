@@ -2,7 +2,7 @@ classdef Curve8Element
     % CURVE8ELEMENT: Stateless mathematical engine
     properties
         Coords, Normals, Thickness, E, nu
-        per_5=blkdiag(eye(3),[0 1;1 0])
+        per_5=blkdiag(speye(3),[0 1;1 0])
     end
 
     methods
@@ -30,7 +30,7 @@ classdef Curve8Element
         [Ke_global] = computeGlobalMatrix6DOF(obj,u_el)
         T_hybrid=Trans_T(obj)
     end
-    methods
+    methods (Access=private)
         [KT, F_int] = computeTangentStiffnessAndForce(obj, u_elem)
     end
     % function [Ke, Bm, Bb, Bs] = computeStiffnessMatrix(obj)

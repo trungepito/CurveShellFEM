@@ -17,6 +17,7 @@ classdef FEM_Solver < handle
     methods
         solveStatic(obj)
         solveBuckling(obj, numModes)
+        solveStaticDisplacement(obj)
     end
 
     methods(Access = private)

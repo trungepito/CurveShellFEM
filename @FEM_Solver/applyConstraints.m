@@ -15,7 +15,8 @@ if ~isempty(obj.Model.BCs)
 
     % 1. Set diagonal to very large number (Penalty method is safer for pure sparse)
     % Or explicit replacement:
-    penalty = min(max(abs(diag(K_mod))) * 1e12, 1e23);
+    % penalty = min(max(abs(diag(K_mod))) * 1e12, 1e23);
+    penalty = 1e9;
 
     for i = 1:length(unique_fixed)
         dof = unique_fixed(i);
