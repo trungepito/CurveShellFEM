@@ -2,7 +2,7 @@
 clear; clc; close all
 
 % 1. Init
-Pre = FEM_Preprocessor_v2(2e5, 0.3, 5);
+Pre = FEM_Preprocessor_v2(2e5, 0.3, 20);
 
 % 2. Define 2D Profile (C-Section in X-Y Plane)
 % Dimensions
@@ -59,17 +59,20 @@ Pre.createExtrusion(nodes, segments, direction, specs, meshZ);
 
 % 4. BCs and Loads
 % Fix Root (Z=0)
-Pre.addBC('plane', [3, 0.0], 1:6);
-Pre.addBC('plane', [3, sum(specs)], 1:2);
+Rend=Pre.selectNodesOnPlane(3,0,1e-4);
+Lend=Pre.selectNodesOnPlane(3,sum(specs),1e-4);
+Pre.addBC(Rend, 1:6,0,'Support');
+Pre.addBC(Lend, 1:2,0,'Support');
 
 % Load at Tip (Z=3)
 % Select nodes via plane selector
 tipNodes = Pre.selectNodesOnPlane(3, specs(1));
-Pre.addNodalLoad(tipNodes, 3, -0.7*1000); % Distributed point load
-
+% Pre.addNodalLoad(tipNodes, 3, -0.7*1000,'Load1'); % Distributed point load
+Pre.addBC(Lend, 3,-10,'Support');
 % 5. Solve & Plot
 Sol = FEM_Solver(Pre);
-Sol.solveStatic();
+% Sol.solveStatic();
+Sol.solveStaticDisplacement();
 Sol.solveBuckling(10);
 
 SolNLopt.numLoadSteps=20;

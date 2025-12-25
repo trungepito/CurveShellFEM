@@ -32,13 +32,13 @@ webm=Pre.selectNodesByBox(3-0.01,3+0.01,-0.01,0.01,-0.150,0.150);
 midspan = Pre.selectNodesOnPlane(1,3,1e-5);
 
 %pinned at 0
-Pre.addBC('nodeList',web0,2);
-Pre.addBC('nodeList',flange0,3);
+Pre.addBC(web0,2,0,'Support');
+Pre.addBC(flange0,3,0,'Support');
 %pinned at L
-Pre.addBC('nodeList',webL,2);
-Pre.addBC('nodeList',flangeL,3);
+Pre.addBC(webL,2,0,'Support');
+Pre.addBC(flangeL,3,0,'Support');
 
-Pre.addBC('nodeList',webm,1);
+Pre.addBC(webm,1,0,'Support');
 
 % Pre.addBC('plane', [1, 0.0], 1:6);
 % Pre.addBC('plane', [1, 2000], 1:6);
@@ -55,7 +55,7 @@ Pre.addBC('nodeList',webm,1);
 % Pre.addNodalLoad(webm, 2,10);
 % Loadnode=Pre.selectNodesOnPlane
 %
-target_disp=-20;
+target_disp=-0.020;
 % 6. Solve
 % Sol = FEM_Solver(Pre);
 % Sol.solveStatic();
@@ -74,7 +74,7 @@ Sol = FEM_Solver_NL(Pre);
 
 % solveDisplacementControl(Node, DOF, Target, Steps, MaxIter, Tol)
 % We push DOF 3 (Z)
-Sol.solveDisplacementControl(crosL, 1, target_disp, 100, 30, 1e-4);
+Sol.solveDisplacementControl(crosL, 1, target_disp, 20, 30, 1e-4);
 %%
 % 7. Post
 Post = FEM_Postprocessor(Pre, Sol);
@@ -93,16 +93,16 @@ title('I-Beam Bending under Pressure');
 colormap jet;
 %% 
 % 5. Post-Process
-Post = FEM_Postprocessor(Pre, Sol2);
+Post = FEM_Postprocessor(Pre, Sol);
 
 % A. Plot Curve
 % Plot Displacement of a tip node (e.g., center of tip)
 % midTip = tipNodes(round(end/2));
-Post.plotLoadDisplacement(web0(1), 3); % Z-disp
+% Post.plotLoadDisplacement(web0(1), 3); % Z-disp
 opts.layer='Top';
 opts.scale=10;
 opts.Nummode=1;
-Post2.plotField('Displacement', opts);
+Post.plotField('Displacement', opts);
 title('I-Beam Bending under Pressure');
 % B. Animate
 % Scale = 1.0 %(True scale to see real rotation)

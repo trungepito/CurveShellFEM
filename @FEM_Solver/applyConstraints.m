@@ -2,12 +2,14 @@ function applyConstraints(obj)
 % m= obj.Model.Constraints;
 K_mod = obj.GlobalK;
 
-% Apply BCs (Diagonal Modification Method)
+% Apply BCs (Diagonal Modification Method), this one is only for the static
+% solver, with fixed constraints! displacment constraints is handled by other
+% method
 % For every fixed DOF, set row/col to 0, diagonal to 1, Force to 0
 % This implies u = 0.
 
 if ~isempty(obj.Model.BCs)
-    fixed_dofs = (obj.Model.BCs(:,1)-1)*6 + obj.Model.BCs(:,2);
+    fixed_dofs = (obj.Model.BCs.Node-1)*6 + obj.Model.BCs.DOF;
     unique_fixed = unique(fixed_dofs);
 
     % Method: Penalty (Simpler for Sparse) or Identity Replacement

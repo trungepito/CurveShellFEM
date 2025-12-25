@@ -19,7 +19,7 @@ classdef FEM_Postprocessor < handle
         plotPrincipalVectors(obj, layer)
         plotLoadDisplacement(obj, nodeID, dofID)
         plotReactionDispCurve(obj, controlNodeID, controlDOF)
-        animateDisplacement(obj, scale, speed)
+        animateDisplacement(obj, scale,speed, SaveVideo, VideoName)
         animateScenario(obj, plotNodeID, plotDOF, scaleFactor, speed)
     end
 
