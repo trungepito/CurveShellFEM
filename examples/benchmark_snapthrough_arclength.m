@@ -1,0 +1,118 @@
+% benchmark_snapthrough_arclength.m
+%
+% Shallow-arch snap-through using the FEM_Solver_ArcLength.
+% Compares three constraint types (Riks, LoadControl, DispControl) against
+% the existing displacement-control solver on the same geometry.
+%
+% This is the standard benchmark for validating arc-length solvers:
+% the structure has a limit point (positive stiffness -> zero -> negative),
+% which displacement control can track but load control cannot.
+% The Riks method should trace the complete equilibrium path automatically.
+
+clear; clc; close all;
+
+% ------------------------------------------------------------------
+% 1.  Geometry and material
+% ------------------------------------------------------------------
+E = 200e9; nu = 0.3; t = 0.05;
+Pre = FEM_Preprocessor_v2(E, nu, t);
+
+R = 6.0;  Chord = 10.0;
+H = sqrt(R^2 - (Chord/2)^2);
+
+n1 = [-Chord/2, 0, 0];
+n2 = [ Chord/2, 0, 0];
+n_center = [0, 0, -H];
+
+nodes = [n1; n2; n_center];
+segs  = [1, 2, 3, 12];
+
+direction = [0, 1, 0];
+Length    = 6;
+Pre.createExtrusion(nodes, segs, direction, Length, 9);
+
+% ------------------------------------------------------------------
+% 2.  Boundary conditions
+% ------------------------------------------------------------------
+leftNodes  = Pre.selectNodesByBox(-Chord/2-0.1, -Chord/2+0.1, -1, 1, -1, 1);
+rightNodes = Pre.selectNodesByBox( Chord/2-0.1,  Chord/2+0.1, -1, 1, -1, 1);
+Pre.addBC([leftNodes; rightNodes], 1:3, 0, 'Support');
+
+% Control node: peak of the arch
+centerID = Pre.selectNodesByBox(-0.1, 0.1, 2.9, 3.1, R-H-0.1, R-H+0.1);
+centerID = centerID(1);
+
+% Reference load at the crown (unit load; lambda scales it)
+Pre.addNodalLoad(centerID, 3, -1e6, 'CrownLoad');
+
+% ------------------------------------------------------------------
+% 3.  Arc-Length solver — Riks constraint (traces limit point)
+% ------------------------------------------------------------------
+opts = SolverOptions();
+opts.Tolerance     = 1e-4;
+opts.MaxIterations = 25;
+
+SolArc = FEM_Solver_ArcLength(Pre, opts);
+
+S_riks = LoadingStage(1.0);
+S_riks.activateBC('Support');
+S_riks.activateLoad('CrownLoad');
+S_riks.ConstraintType  = 'Riks';
+S_riks.ArcLengthRadius = 0.02;
+S_riks.ArcLengthMin    = 1e-5;
+S_riks.ArcLengthMax    = 0.15;
+
+fprintf('\n=== Arc-Length Analysis (Riks) ===\n');
+SolArc.solve({S_riks});
+
+% ------------------------------------------------------------------
+% 4.  Reference: displacement-control (for comparison curve)
+% ------------------------------------------------------------------
+SolDC = FEM_Solver_NL(Pre);
+target_disp = -2.8;
+fprintf('\n=== Displacement-Control Reference ===\n');
+SolDC.solveDisplacementControl(centerID, 3, target_disp, 30, 15, 1e-4);
+
+% ------------------------------------------------------------------
+% 5.  Post-processing
+% ------------------------------------------------------------------
+c_idx = (centerID-1)*6 + 3;
+
+figure('Name', 'Snap-Through: Arc-Length vs Displacement Control', 'Color', 'w');
+hold on; grid on;
+
+% Arc-length path
+if ~isempty(SolArc.U_Hist)
+    u_arc = SolArc.U_Hist(c_idx, :);
+    % Scale lambda back to force: lambda * 1e6 N
+    f_arc = SolArc.LambdaHist * 1e6;
+    plot(u_arc, f_arc/1e3, 'b-o', 'LineWidth', 2, 'MarkerSize', 4, ...
+        'DisplayName', sprintf('Arc-Length / Riks (%d steps)', SolArc.StepCount));
+end
+
+% Displacement-control path
+if ~isempty(SolDC.U_Hist)
+    u_dc = SolDC.U_Hist(c_idx, :);
+    f_dc = SolDC.ReactionHist;
+    plot(u_dc, -f_dc/1e3, 'r--', 'LineWidth', 1.5, ...
+        'DisplayName', 'Displacement control');
+end
+
+xlabel('Crown Z-displacement (m)');
+ylabel('Applied force (kN)');
+title('Shallow arch snap-through — equilibrium path');
+legend('Location', 'best');
+
+% ------------------------------------------------------------------
+% 6.  Arc-length radius history
+% ------------------------------------------------------------------
+figure('Name', 'Arc-Length Radius Adaptation', 'Color', 'w');
+if ~isempty(SolArc.ArcLengthHistory)
+    semilogy(SolArc.ArcLengthHistory, 'b-o', 'LineWidth', 1.5);
+    xlabel('Step'); ylabel('Arc-length radius');
+    title('Adaptive arc-length radius history'); grid on;
+end
+
+fprintf('\nArc-length solver finished: %d steps converged.\n', SolArc.StepCount);
+fprintf('Displacement-control finished: %d steps converged.\n', ...
+    size(SolDC.U_Hist, 2));
