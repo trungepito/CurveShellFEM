@@ -12,27 +12,24 @@ if nargin < 5 || isempty(tag), tag = 'Support'; end
 nodes = nodes(:)';
 dofs = dofs(:)';
 
-% Pre-create arrays for bulk table creation
-numNew = length(nodes) * length(dofs);
-newNodes = zeros(numNew, 1);
-newDofs = zeros(numNew, 1);
-newVals = zeros(numNew, 1);
-newTags = cell(numNew, 1);
+% Create a grid of all node and DOF combinations
+[N_grid, D_grid] = ndgrid(double(nodes), double(dofs));
 
-curr = 1;
-for i = nodes
-    for j = dofs
-        newNodes(curr) = i;
-        newDofs(curr) = j;
-        newVals(curr) = value; % Assumes scalar value for all selected DOFs
-        newTags{curr} = tag;
-        curr = curr + 1;
-    end
-end
+newNodes = N_grid(:);
+newDofs = D_grid(:);
+numNew = length(newNodes);
+
+newVals = repmat(double(value), numNew, 1);
+newTags = repmat({tag}, numNew, 1);
 
 % Create and append the new table
 newTable = table(newNodes, newDofs, newVals, newTags, 'VariableNames', {'Node','DOF','Value','Tag'});
-obj.BCs = [obj.BCs; newTable];
+
+if isempty(obj.BCs)
+    obj.BCs = newTable;
+else
+    obj.BCs = [obj.BCs; newTable];
+end
 
 fprintf('[Physics] BC added to %d nodes (%d total entries).\n', length(nodes), numNew);
 end

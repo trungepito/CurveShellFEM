@@ -18,7 +18,7 @@ classdef FEM_Preprocessor_v2 < handle
         GeoPatches  % Cell array of patch definitions
 
         % --- MESH DATA ---
-        % Struct: .Nodes (double), .Elements (int32), .Normals (double)
+        % Struct: .Nodes (double), .Elements (double), .Normals (double)
         Mesh
 
         % --- PHYSICS DATA ---
@@ -35,7 +35,7 @@ classdef FEM_Preprocessor_v2 < handle
             obj.GeoLines = {};
             obj.GeoPatches = {};
             obj.Mesh.Nodes = zeros(0,3, 'double');
-            obj.Mesh.Elements = zeros(0,8, 'int32');
+            obj.Mesh.Elements = zeros(0,8, 'double');
             obj.Mesh.Normals = zeros(0,3, 'double');
         end
     end
