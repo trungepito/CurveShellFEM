@@ -18,13 +18,12 @@ classdef FEM_Preprocessor_v2 < handle
         GeoPatches  % Cell array of patch definitions
 
         % --- MESH DATA ---
-        Mesh        % Struct: .Nodes, .Elements, .Normals
+        % Struct: .Nodes (double), .Elements (int32), .Normals (double)
+        Mesh
 
         % --- PHYSICS DATA ---
         Material    % Struct: .E, .nu, .t
-        % to generalize this data let move to the table format!!!
         BCs = table([],[],[],[], 'VariableNames', {'Node','DOF','Value','Tag'})
-        % [NodeID, DOF, Value,Tag] this also move to the table format
         Loads=table([],[],[],[], 'VariableNames', {'Node','DOF','Value','Tag'});
     end
 
@@ -35,9 +34,9 @@ classdef FEM_Preprocessor_v2 < handle
             obj.GeoPoints = zeros(0,3);
             obj.GeoLines = {};
             obj.GeoPatches = {};
-            obj.Mesh.Nodes = zeros(0,3);
-            obj.Mesh.Elements = int32(zeros(0,8));
-
+            obj.Mesh.Nodes = zeros(0,3, 'double');
+            obj.Mesh.Elements = zeros(0,8, 'int32');
+            obj.Mesh.Normals = zeros(0,3, 'double');
         end
     end
     methods
@@ -49,7 +48,6 @@ classdef FEM_Preprocessor_v2 < handle
         createCylinderPanel(obj, R, H, angleStart, angleEnd)
         createPlateWithHole(obj, L, R)
         createIBeam(obj, H, W, L,numseg,meshz)
-          
     end
     methods
         %  MODULE 2: MESHING
@@ -61,9 +59,6 @@ classdef FEM_Preprocessor_v2 < handle
     end
     methods
         function setMaterialPlastic(obj, sigY, H_iso)
-            % SETMATERIALPLASTIC - Configures the model to use J2 Plasticity.
-            % Uses E and nu already defined in the preprocessor.
-            % if nargin < 4, H_kin = 0; end
             obj.Material.Type = 'J2Plastic';
             obj.Material.Obj = Material_J2Plastic(obj.Material.E, obj.Material.nu, sigY, H_iso);
         end
@@ -77,7 +72,6 @@ classdef FEM_Preprocessor_v2 < handle
     end
     methods
         % Apply physical conditions Loads and Boundary conditions
-        % --- CONSTRAINT METHODS ---
         addBC(obj,nodes, dofs, value,tag)
         addNodalLoad(obj, nodeIDs, dof, val,tag)
         addDistributedLoad(obj, elemIDs, loadVector,tag)
@@ -85,8 +79,23 @@ classdef FEM_Preprocessor_v2 < handle
         integrateSurfaceLoad(obj, elemIDs, funcHandle, type,tag)
     end
     methods
-        % ADVANCED METHODS Combine geometry and mesh
+        % ADVANCED METHODS
         createExtrusion(obj, profileNodes, profileSegs, direction, extrudeSpecs, meshDensityZ)
+        
+        function applyImperfection(obj, modeShape, amplitude)
+            % APPLYIMPERFECTION - Perturbs the mesh nodes using a mode shape.
+            if size(modeShape, 1) ~= size(obj.Mesh.Nodes, 1)*6
+                error('Mode shape size does not match mesh DOFs.');
+            end
+            dx = modeShape(1:6:end);
+            dy = modeShape(2:6:end);
+            dz = modeShape(3:6:end);
+            mags = sqrt(dx.^2 + dy.^2 + dz.^2);
+            scale = amplitude / max(mags);
+            obj.Mesh.Nodes(:,1) = obj.Mesh.Nodes(:,1) + dx * scale;
+            obj.Mesh.Nodes(:,2) = obj.Mesh.Nodes(:,2) + dy * scale;
+            obj.Mesh.Nodes(:,3) = obj.Mesh.Nodes(:,3) + dz * scale;
+            fprintf('[Preprocessor] Applied imperfection with max amplitude: %.3e\n', amplitude);
+        end
     end
-
 end

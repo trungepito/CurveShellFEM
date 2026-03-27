@@ -44,5 +44,15 @@ end
 
 % Store
 [r, c, v] = find(global_F);
-obj.Loads = [obj.Loads; {r, c, v, tag}];
+if ~isempty(r)
+    numNew = length(r);
+    tags = repmat({tag}, numNew, 1);
+    newTable = table(r, c, v, tags, 'VariableNames', {'Node', 'DOF', 'Value', 'Tag'});
+    if isempty(obj.Loads)
+        obj.Loads = newTable;
+    else
+        obj.Loads = [obj.Loads; newTable];
+    end
+    fprintf('[Physics] Surface load integrated. Added %d equivalent nodal loads.\n', numNew);
+end
 end

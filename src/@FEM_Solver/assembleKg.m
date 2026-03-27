@@ -32,8 +32,9 @@ for e = 1:numElems
         g_node = idx(n);
         u_el((n-1)*6 + (1:6)) = obj.U((g_node-1)*6 + (1:6));
     end
-    elObj = Curve8Element(el_coords, el_normals, mat.t, mat.E, mat.nu);
-    Kg_e = elObj.computeGlobalMatrix6DOF(u_el); % using the same routine to transfrom 5DOFs-->6DOFs
+    % Use dedicated Kg routine (Phase 10 Fix)
+    elObj = obj.Elements{e};
+    Kg_e = elObj.computeGlobalKg6DOF(u_el);
 
     % Scatter
     sctr = zeros(1, 48);

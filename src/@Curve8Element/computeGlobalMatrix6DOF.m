@@ -15,14 +15,15 @@ if nargin < 2 || isempty(u_el)
 else
     % NONLINEAR MODE: Compute Tangent (Ke + Kg) and Internal Force
     u_el_l = T_hybrid * u_el;
-    u_el_l(6:6:end) = []; % Strip drilling components
-    u_mix = obj.per_5_blkdiag() * u_el_l;
     
-    if isa(obj, 'Curve8Element_Plastic')
-        [Ke_mixed, fe_mixed, NewHist] = obj.computeTangentStiffnessAndForce(u_mix);
-    else
-        [Ke_mixed, fe_mixed] = obj.computeTangentStiffnessAndForce(u_mix);
-    end
+    % Strip drilling components and permute to mixed basis [u,v,w,alpha,beta]
+    % (Keeping existing index-stripping logic for 48->40 mapping)
+    u_el_stripped = u_el_l;
+    u_el_stripped(6:6:end) = []; 
+    u_mix = obj.per_5_blkdiag() * u_el_stripped;
+    
+    % Unified call (Phase 10)
+    [Ke_mixed, fe_mixed, NewHist] = obj.computeTangentStiffnessAndForce(u_mix);
 end
 
 % 2. Map Mixed Basis (40) back to Expanded Basis (48)

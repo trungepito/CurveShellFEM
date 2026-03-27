@@ -14,16 +14,24 @@ classdef Curve8Element
         Coords, Normals, Thickness, E, nu
         per_5=blkdiag(speye(3),[0 1;1 0])
         T_cached    % Cached hybrid transformation matrix (48x48)
+        
+        % Stateful Properties (Phase 10 Consolidation)
+        MaterialModel % Instance of Material (e.g., J2Plastic)
+        HistoryData   % Array of structs for GP history
     end
 
     methods
-        function obj = Curve8Element(coords, normals, t, E, nu)
+        function obj = Curve8Element(coords, normals, t, E, nu, matModel, history)
             obj.Coords = coords;
             obj.Normals = normals;
             obj.Thickness = t;
             obj.E = E;
             obj.nu = nu;
-            obj.T_cached = obj.Trans_T();  % Compute once
+            obj.T_cached = obj.Trans_T();
+            
+            % Initialize state if provided
+            if nargin >= 6, obj.MaterialModel = matModel; end
+            if nargin >= 7, obj.HistoryData = history; end
         end
     end
 

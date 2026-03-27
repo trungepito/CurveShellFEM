@@ -11,7 +11,10 @@ end
 
 if istable(obj.Model.BCs)
     % Modern Table format (Node, DOF, Value, Tag)
-    fixed_dofs = (obj.Model.BCs.Node-1)*6 + obj.Model.BCs.DOF;
+    BCs = obj.Model.BCs;
+    if iscell(BCs.Node), Nodes = cell2mat(BCs.Node); else, Nodes = double(BCs.Node); end
+    if iscell(BCs.DOF), DOFs = cell2mat(BCs.DOF); else, DOFs = double(BCs.DOF); end
+    fixed_dofs = (Nodes-1)*6 + DOFs;
 else
     % Matrix form [Node, DOF]
     fixed_dofs = (obj.Model.BCs(:,1)-1)*6 + obj.Model.BCs(:,2);
