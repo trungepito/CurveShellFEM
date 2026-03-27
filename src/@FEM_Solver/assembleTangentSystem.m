@@ -19,31 +19,27 @@ count = 0;
 F_int = zeros(nDofs, 1);
 TrialHist = cell(nElems, 1); % Store trial states
 
+% Pre-compute scatter pattern for a single element to avoid meshgrid in loop
+[ii_base, jj_base] = meshgrid(1:48, 1:48);
+
 for e = 1:nElems
     sctr = obj.SctrMap(e, :);
 
-    % Extract Current Element Displacement
-    u_el = zeros(48, 1);
-    for n = 1:8
-        g_dof = (obj.Model.Mesh.Elements(e, n)-1)*6;
-        u_el((n-1)*6 + (1:6)) = U_curr(g_dof + (1:6));
-    end
+    % Vectorized Extraction of Element Displacement
+    u_el = U_curr(sctr);
 
-    % Use cached element object
+    % Call the element method (Optimized cache)
     elObj = obj.Elements{e};
-
-    % CALL THE ELEMENT METHOD
     [KT_global, fe, NewHist] = elObj.computeGlobalMatrix6DOF(u_el);
     TrialHist{e} = NewHist;
 
     % Assemble F_int
     F_int(sctr) = F_int(sctr) + fe;
     
-    % Assemble KT triplets
-    [ii, jj] = meshgrid(sctr, sctr);
+    % Assemble KT triplets using vectorized indexing
     range = count + (1:nz_per_elem);
-    I(range) = ii(:);
-    J(range) = jj(:);
+    I(range) = sctr(ii_base(:));
+    J(range) = sctr(jj_base(:));
     V(range) = KT_global(:);
     count = count + nz_per_elem;
 end

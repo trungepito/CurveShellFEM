@@ -5,8 +5,10 @@ function renderPlot(obj, values, fieldType, opts)
 % opts: Struct with .layer, .scale, .Nummode, etc.
 
 if nargin < 4 || isempty(opts)
-    opts = struct('layer', 'Mid', 'scale', 1.0);
+    opts = struct();
 end
+if ~isfield(opts, 'layer'), opts.layer = 'Mid'; end
+if ~isfield(opts, 'scale'), opts.scale = 1.0; end
 
 nodes = obj.Model.Mesh.Nodes;
 elems = obj.Model.Mesh.Elements;

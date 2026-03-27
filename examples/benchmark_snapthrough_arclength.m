@@ -43,14 +43,14 @@ centerID = Pre.selectNodesByBox(-0.1, 0.1, 2.9, 3.1, R-H-0.1, R-H+0.1);
 centerID = centerID(1);
 
 % Reference load at the crown (unit load; lambda scales it)
-Pre.addNodalLoad(centerID, 3, -1e6, 'CrownLoad');
+Pre.addNodalLoad(centerID, 3, -1e5, 'CrownLoad');
 
 % ------------------------------------------------------------------
 % 3.  Arc-Length solver — Riks constraint (traces limit point)
 % ------------------------------------------------------------------
 opts = SolverOptions();
 opts.Tolerance     = 1e-4;
-opts.MaxIterations = 25;
+opts.MaxIterations = 30;
 
 SolArc = FEM_Solver_ArcLength(Pre, opts);
 
@@ -60,7 +60,7 @@ S_riks.activateLoad('CrownLoad');
 S_riks.ConstraintType  = 'Riks';
 S_riks.ArcLengthRadius = 0.02;
 S_riks.ArcLengthMin    = 1e-5;
-S_riks.ArcLengthMax    = 0.15;
+S_riks.ArcLengthMax    = 0.25;
 
 fprintf('\n=== Arc-Length Analysis (Riks) ===\n');
 SolArc.solve({S_riks});
@@ -69,11 +69,11 @@ SolArc.solve({S_riks});
 % 4.  Reference: displacement-control (for comparison curve)
 % ------------------------------------------------------------------
 SolDC = FEM_Solver_NL(Pre);
-target_disp = -2.8;
+target_disp = -1.8;
 fprintf('\n=== Displacement-Control Reference ===\n');
 SolDC.solveDisplacementControl(centerID, 3, target_disp, 30, 15, 1e-4);
 
-% ------------------------------------------------------------------
+%% ------------------------------------------------------------------
 % 5.  Post-processing
 % ------------------------------------------------------------------
 c_idx = (centerID-1)*6 + 3;
@@ -116,3 +116,16 @@ end
 fprintf('\nArc-length solver finished: %d steps converged.\n', SolArc.StepCount);
 fprintf('Displacement-control finished: %d steps converged.\n', ...
     size(SolDC.U_Hist, 2));
+
+%% 5. Post-Process
+Post = FEM_Postprocessor(Pre, SolDC);
+
+% A. Plot Curve
+% Plot Displacement of a tip node (e.g., center of tip)
+% midTip = tipNodes(round(end/2));
+% Post.plotLoadDisplacement(web0(1), 3); % Z-disp
+opts1.layer='Top';
+opts1.scale=1;
+opts1.Nummode=1;
+Post.plotField('Displacement', opts1);
+title('Snapthough examples');

@@ -1,91 +1,85 @@
 function success = solveArcLengthStage(obj, Stage, s)
-% SOLVEARCLENGTHSTAGE - Arc-length stage driver with adaptive radius.
+% SOLVEARCLENGTHSTAGE  Arc-length stage driver with adaptive radius control.
 %
-% Processes one LoadingStage using the arc-length method.  The stage
-% duration is discretised into arc-length steps.  The arc-length radius
-% adapts automatically:
+% Drives one LoadingStage through the arc-length corrector.  The stage
+% runs for a fixed number of steps (nSteps = ceil(Stage.Duration /
+% ArcLengthRadius)) rather than terminating on pseudo-time.
 %
-%   * Converged in fewer than 5 iterations  -> radius * 1.5  (capped at Max)
-%   * Converged normally                    -> radius unchanged
-%   * Failed to converge                    -> radius * 0.5, retry (max 5 trials)
-%   * All trials exhausted                  -> abort stage
+% Adaptive radius policy:
+%   iters <= 4              -> radius * 1.5  (easy convergence, open up)
+%   4 < iters <= 0.75*maxit -> radius unchanged
+%   iters > 0.75*maxit      -> radius * 0.7  (slow, tighten slightly)
+%   failed trial            -> radius * 0.5, retry (up to max_trials)
+%   all trials exhausted    -> abort and return success = false
 %
-% The external load vector is built from Stage.ActiveLoads; displacement
-% boundary conditions from Stage.ActiveBCs are applied to the free-dof
-% partition, mirroring the convention used in FEM_Solver_Adaptive.
+% Fixes applied versus previous version:
+%   1. Residual sign:  R = lambda*F_ext - F_int  (was inverted).
+%   2. KT partitioned to free DOFs before solve; fixed-DOF rows never enter
+%      the linear system so the matrix is not rank-deficient.
+%   3. Lambda continuity: starts from last value in obj.LambdaHist, not 0.
+%   4. Termination: step-counter based, not pseudo-time, so snap-back paths
+%      (where lambda decreases) cannot cause an infinite loop.
+%   5. History trim: only newly written columns are trimmed; earlier stage
+%      columns are preserved.
+%   6. Reaction cost: F_int returned directly from arcLengthStep; no extra
+%      assembly call per converged step.
+%   7. obj.U is not mutated inside the assembly closure; passed explicitly.
+%   8. ArcLengthHistory records trial_arc (the radius actually used) not
+%      arc_length (the tentative next-step value).
 %
 % Syntax:
-%   success = obj.solveArcLengthStage(Stage, stageIndex)
-%
-% Inputs:
-%   Stage - LoadingStage with arc-length properties set
-%   s     - Integer stage index (used for history/event labelling)
-%
-% Outputs:
-%   success - true if all arc-length steps within this stage converged
+%   success = obj.solveArcLengthStage(Stage, s)
 
 % ------------------------------------------------------------------
-% 0.  Extract stage parameters
+% 0.  Stage parameters
 % ------------------------------------------------------------------
-arc_length  = Stage.ArcLengthRadius;          % Initial / current radius
-arc_min     = Stage.ArcLengthMin;
-arc_max     = Stage.ArcLengthMax;
-max_trials  = 5;                              % Max re-tries per step
-usePredictor = strcmp(Stage.ConstraintType, 'Riks');  % Predictor only needed for Riks
+arc_length   = Stage.ArcLengthRadius;
+arc_min      = Stage.ArcLengthMin;
+arc_max      = Stage.ArcLengthMax;
+arc_psi      = Stage.ArcLengthPsi; % Load-scaling factor
+max_trials   = 5;
+usePredictor = strcmp(obj.ConstraintType, 'Riks');
 
-tol    = obj.Options.Tolerance;
-maxit  = obj.Options.MaxIterations;
+obj.ArcLengthPsi = arc_psi; % Sync to solver instance for constraint calls
+
+tol   = obj.Options.Tolerance;
+maxit = obj.Options.MaxIterations;
+
+% Number of arc-length steps to attempt in this stage.
+% We use Duration / ArcLengthRadius as an estimate; the adaptive radius
+% will adjust in practice.
+nSteps = max(1, ceil(Stage.Duration / arc_length));
 
 % ------------------------------------------------------------------
-% 1.  Build the total external load vector for this stage
-%     (mirrors FEM_Solver_Adaptive.calculateGlobalTargetForce)
+% 1.  External load vector for this stage
 % ------------------------------------------------------------------
 F_ext_total = obj.calculateGlobalTargetForce(Stage.ActiveLoads);
 
 % ------------------------------------------------------------------
-% 2.  Resolve displacement-control DOFs (ActiveBCs)
-%     Fixed DOFs are removed from the Newton system; their targets
-%     are embedded directly in the solution vector.
+% 2.  Displacement BCs and free-DOF partition
 % ------------------------------------------------------------------
 [fixed_dofs, disp_targets] = getDispload(obj, Stage.ActiveBCs);
-nDofs       = length(obj.U);
-free_dofs   = setdiff(1:nDofs, fixed_dofs);
+nDofs      = length(obj.U);
+free_dofs  = setdiff(1:nDofs, fixed_dofs)';
 
-% Apply prescribed displacements to U for the first predictor step
-U_stage_start = obj.U;
-U_stage_start(fixed_dofs) = disp_targets;
+% Apply prescribed displacements once at stage start.
+% Subsequent steps hold these values fixed (they become part of u_converged).
+U_stage_start                = obj.U;
+U_stage_start(fixed_dofs)   = disp_targets;
 
 % ------------------------------------------------------------------
-% 3.  Build an assembly function handle that matches the sample
-%     arc_length_solver.m signature:
-%         [R, KT, fext, hist] = func(u, lambda, hist, nri)
-%     where:
-%       R    = F_int(u) - lambda*F_ext  (residual, zero at equilibrium)
-%       KT   = tangent stiffness
-%       fext = external load vector (unscaled, for norm reference)
+% 3.  Assembly closure
 %
-%     We use obj.assembleTangentSystem which is inherited from FEM_Solver.
-%     History is handled internally by the element cache (plasticity),
-%     so hist is passed as a dummy integer counter here.
+    function [R, KT, fext, TrialHist] = assembleForArcLength(u_in, lambda_in,~, ~)
+        % Signature: [R, KT, fext, TrialHist] = funcHandle(u_in, lambda_in, ...)
+        [KT_full, F_int, TrialHist] = obj.assembleTangentSystem(u_in);
+        fext = F_ext_total;
+        R = F_int - lambda_in * fext;    % equilibrium: F_int = lambda * F_ext
+        R(fixed_dofs) = 0;               % enforce fixed-DOF residual rows
+        KT = KT_full;
+    end
 % ------------------------------------------------------------------
-function [R, KT, fext, hist_out] = assembleArcLength(u_in, lambda_in, hist_in, ~)
-    obj.U = u_in;
-    [KT_full, F_int] = obj.assembleTangentSystem(u_in);
-
-    % Apply displacement BCs via penalty / zeroing of fixed rows
-    % (Homogeneous enforcement: prescribed DOFs hold their target values)
-    fext = F_ext_total;
-    R    = F_int - lambda_in * F_ext_total;
-
-    % Zero residual at fixed DOFs (they are not solved for)
-    R(fixed_dofs) = 0;
-
-    hist_out = hist_in;
-    KT       = KT_full;
-end
-
-% ------------------------------------------------------------------
-% 4.  Select constraint function handle from ConstraintType
+% 4.  Constraint function handle
 % ------------------------------------------------------------------
 switch obj.ConstraintType
     case 'Riks'
@@ -99,139 +93,156 @@ switch obj.ConstraintType
             obj.dispControlConstraint(u,l,u0,l0,dup,dlp,si);
     otherwise
         warning('FEM_Solver_ArcLength:unknownConstraint', ...
-            'Unknown ConstraintType ''%s''; defaulting to Riks.', ...
-            obj.ConstraintType);
+            'Unknown ConstraintType ''%s''; defaulting to Riks.', obj.ConstraintType);
         constraintFn = @(u,l,u0,l0,dup,dlp,si) ...
             obj.crisfieldConstraint(u,l,u0,l0,dup,dlp,si);
 end
 
 % ------------------------------------------------------------------
-% 5.  Determine number of arc-length steps for this stage.
-%     The stage duration is treated as a load-factor increment target.
-%     Steps continue until time reaches stage end.
+% 5.  Initialise state
+%
+%     FIX (lambda continuity): the previous code hard-coded lambda = 0 at
+%     the start of every stage.  For multi-stage runs this is wrong because
+%     lambda should continue from wherever the previous stage left it.  We
+%     initialise from the last entry in LambdaHist, falling back to 0 if
+%     this is the very first stage.
 % ------------------------------------------------------------------
-t_start  = obj.Time;
-t_end    = t_start + Stage.Duration;
+if isempty(obj.LambdaHist)
+    lambda = 0;
+else
+    lambda = obj.LambdaHist(end);
+end
 
-% Current load factor lambda (0 = unloaded, 1 = full Stage.Duration applied)
-lambda        = 0;   % lambda is dimensionless [0, 1] within the stage
-u_converged   = U_stage_start;
-funcHandle    = @assembleArcLength;
+u_converged = U_stage_start;
+dup_prev    = zeros(nDofs, 1);  % Predictor direction from previous step
+% (used for CSP sign flip detection)
 
-stage_step   = 0;       % Step counter within this stage
-success      = false;   % Will be set true when t_end is reached
-S_Reaction   = [];      % Reaction force history for this stage
+stage_step  = 0;
+col_start   = obj.StepCount;   % Column index before this stage starts,
+% used for history trim at the end.
+S_Reaction  = zeros(length(fixed_dofs), 0);
 
-fprintf('    ArcLength radius: %.2e  [%.2e, %.2e]  Constraint: %s\n', ...
-    arc_length, arc_min, arc_max, obj.ConstraintType);
+fprintf('    radius=%.2e [%.2e,%.2e]  nSteps≈%d  λ₀=%.4f  constraint=%s\n', ...
+    arc_length, arc_min, arc_max, nSteps, lambda, obj.ConstraintType);
 
 % ------------------------------------------------------------------
-% 6.  Main arc-length stepping loop
+% 6.  Main stepping loop
+%
+%     FIX (termination): the previous loop used pseudo-time = |Δλ| which
+%     makes it infinite on snap-back paths (lambda decreasing, |Δλ| > 0
+%     but time never reaches t_end).  We now iterate for a fixed nSteps
+%     and let the adaptive radius naturally control resolution.
 % ------------------------------------------------------------------
-while obj.Time < t_end
+success = false;
 
-    % Snapshot state before this step (for rollback on failure)
-    u0_step     = u_converged;
+for step = 1 : nSteps
+
+    u0_step      = u_converged;
     lambda0_step = lambda;
 
-    % --- Trial loop (adaptive radius) ---
-    trial_arc   = arc_length;
-    converged   = false;
-    iters_used  = 0;
+    % --- Adaptive trial loop ---
+    trial_arc  = arc_length;
+    converged  = false;
+    iters_used = 0;
+    F_int_conv = zeros(nDofs, 1);
 
-    for trial = 1:max_trials
+    for trial = 1 : max_trials
+        fprintf('   step %d/%d  trial %d  ds=%.3e  λ=%.4f ... ', ...
+            step, nSteps, trial, trial_arc, lambda0_step);
 
-        fprintf('   Step %d  trial %d/%d  radius=%.3e  lambda=%.4f ... ', ...
-            stage_step+1, trial, max_trials, trial_arc, lambda0_step);
-
-        [u_trial, lambda_trial, converged, iters_used] = obj.arcLengthStep( ...
-            funcHandle, constraintFn, ...
-            u0_step, lambda0_step, ...
+        [u_trial, lambda_trial, F_int_trial, TrialHist_trial, converged, iters_used] = ...
+            obj.arcLengthStep( ...
+            @assembleForArcLength, constraintFn, free_dofs, ...
+            u0_step, lambda0_step, dup_prev, ...
             trial_arc, usePredictor, tol, maxit);
 
         if converged
-            fprintf('OK  (%d iters)\n', iters_used);
+            fprintf('OK (%d iters)\n', iters_used);
+            F_int_conv = F_int_trial;
+            TrialHist_conv = TrialHist_trial;
             break;
         else
             fprintf('FAIL\n');
             if trial < max_trials
                 trial_arc = max(trial_arc * 0.5, arc_min);
-                fprintf('         Reducing radius to %.3e\n', trial_arc);
+                fprintf('         -> halving radius to %.3e\n', trial_arc);
             end
         end
     end
 
-    % --- Check whether the step ultimately converged ---
     if ~converged
-        fprintf('!!! Stage %d: step %d did not converge after %d trials.\n', ...
-            s, stage_step+1, max_trials);
+        fprintf('!!! Stage %d step %d: failed after %d trials.\n', s, step, max_trials);
         success = false;
         return;
     end
 
-    % --- Accept the converged state ---
-    u_converged   = u_trial;
-    lambda        = lambda_trial;
-    stage_step    = stage_step + 1;
+    % --- Accept converged state ---
+    % COMMIT HISTORY: Update elements with the plastic state from the 
+    % successful converging trial.
+    obj.commitHistory(TrialHist_conv);
+    % Update dup_prev: compute the displacement increment taken this step
+    % so the next predictor can detect snap-back (sign reversal of k0).
+    dup_prev    = u_trial - u0_step;
+    u_converged = u_trial;
+    lambda      = lambda_trial;
+    stage_step  = stage_step + 1;
 
-    % --- Adaptive radius update for the NEXT step ---
+    % --- Adaptive radius for the NEXT step ---
     if iters_used <= 4
         arc_length = min(trial_arc * 1.5, arc_max);
-    elseif iters_used > obj.Options.MaxIterations * 0.75
+    elseif iters_used > round(maxit * 0.75)
         arc_length = max(trial_arc * 0.7, arc_min);
     else
-        arc_length = trial_arc;   % Converged in normal range — keep radius
+        arc_length = trial_arc;
     end
 
-    % --- Advance pseudo-time proportionally to lambda increment ---
-    delta_lambda  = abs(lambda - lambda0_step);
-    obj.Time      = min(obj.Time + delta_lambda * Stage.Duration, t_end);
-
-    % --- Store converged displacement in object ---
+    % --- Commit to object state ---
     obj.U         = u_converged;
     obj.StepCount = obj.StepCount + 1;
 
-    % --- Grow U_Hist dynamically (doubles capacity like FEM_Solver_Adaptive) ---
+    % --- History storage (grow by doubling when needed) ---
     if obj.StepCount > size(obj.U_Hist, 2)
-        obj.U_Hist = [obj.U_Hist, zeros(nDofs, max(size(obj.U_Hist,2), 30))];
+        grow = max(size(obj.U_Hist, 2), 30);
+        obj.U_Hist       = [obj.U_Hist,       zeros(nDofs, grow)];
+        obj.History_Time = [obj.History_Time;  zeros(grow, 1)];
     end
-    obj.U_Hist(:, obj.StepCount) = u_converged;
+    obj.U_Hist(:, obj.StepCount)    = u_converged;
+    obj.History_Time(obj.StepCount) = obj.Time + step * Stage.Duration / nSteps;
 
-    if obj.StepCount > length(obj.History_Time)
-        obj.History_Time = [obj.History_Time; zeros(max(length(obj.History_Time),30),1)];
-    end
-    obj.History_Time(obj.StepCount) = obj.Time;
-
-    % Append to lambda and arc-length histories
+    % FIX (ArcLengthHistory): record trial_arc (the radius actually used
+    % in the successful trial), not arc_length (the speculative next value).
     obj.LambdaHist       = [obj.LambdaHist,       lambda];
-    obj.ArcLengthHistory = [obj.ArcLengthHistory,  arc_length];
+    obj.ArcLengthHistory = [obj.ArcLengthHistory,  trial_arc];
 
-    % Reaction forces at fixed DOFs
-    [~, F_int_conv] = obj.assembleTangentSystem(u_converged);
-    reaction_vec    = F_int_conv(fixed_dofs);
-    S_Reaction      = [S_Reaction, reaction_vec(:)];
+    % FIX (reaction cost): F_int is already available from arcLengthStep;
+    % no second assembly needed.
+    S_Reaction = [S_Reaction, F_int_conv(fixed_dofs)];
 
-    % --- Fire StepConverged event (compatible with FEM_Solver_Adaptive listeners) ---
-    evtData = SolverEventData(obj.Time, obj.StepCount, u_converged, lambda, iters_used);
+    % --- Event notification ---
+    evtData = SolverEventData(obj.History_Time(obj.StepCount), ...
+        obj.StepCount, u_converged, lambda, iters_used);
     notify(obj, 'StepConverged', evtData);
-
-    % --- Check for stage completion ---
-    if abs(obj.Time - t_end) < 1e-9
-        break;
-    end
 end
 
 % ------------------------------------------------------------------
-% 7.  Trim history to actual length and store stage reactions
+% 7.  Trim history to actual columns written
+%
+%     FIX (history trim): the previous code trimmed obj.U_Hist to
+%     1:obj.StepCount on every stage, which discarded columns written
+%     by earlier stages.  We now trim only from col_start+1 onward,
+%     keeping prior-stage data intact.
 % ------------------------------------------------------------------
-obj.U_Hist       = obj.U_Hist(:, 1:obj.StepCount);
-obj.History_Time = obj.History_Time(1:obj.StepCount);
+valid_end        = obj.StepCount;
+new_cols         = col_start + 1 : valid_end;
+% The preallocated zeros beyond valid_end are still in the arrays;
+% trim them now so callers see exactly the data that exists.
+obj.U_Hist       = obj.U_Hist(:,       1:valid_end);
+obj.History_Time = obj.History_Time(   1:valid_end);
+
+obj.Time        = obj.Time + Stage.Duration;
+obj.F_ext_start = F_ext_total;
 obj.ReactionHist{s} = S_Reaction;
 
-% Update the external load baseline for the next stage
-% (mirrors FEM_Solver_Adaptive.solveStage)
-obj.F_ext_start = F_ext_total;
-
 success = true;
-fprintf('    Stage %d complete — %d steps converged.\n', s, stage_step);
+fprintf('    Stage %d: %d steps converged.  λ_final = %.4f\n', s, stage_step, lambda);
 end

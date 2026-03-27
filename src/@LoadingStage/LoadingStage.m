@@ -7,8 +7,9 @@ classdef LoadingStage < handle
         % Arc Length Parameters (for ArcLength solver)
         ArcLengthRadius = 0.01;    % Initial arc length radius
         ArcLengthMin = 1e-6;       % Minimum arc length
-        ArcLengthMax = 1.0;        % Maximum arc length
-        ConstraintType = 'Riks';   % 'Riks', 'LoadControl', 'DispControl'
+        ArcLengthMax = 1.0       % Adaptive cap for the radius
+        ArcLengthPsi = 1.0       % Load-scaling factor for generalized arc-length
+        ConstraintType = 'Riks'  % 'Riks' | 'LoadControl' | 'DispControl'
         ControlDOF = [];           % For DispControl: DOF index to control
     end
     

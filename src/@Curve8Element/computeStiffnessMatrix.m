@@ -9,50 +9,32 @@ Ke = zeros(40, 40); % 8 nodes * 5 DOFs
 Gpoint_mb=3;% number of gauss points for Membrane and Bending term
 Gpoint_s=2; % number of gauss points for Shear term
 
-[g_points,g_weights]=MathFEM.Gauss_p(Gpoint_mb);
-for i = 1:Gpoint_mb
-    for j = 1:Gpoint_mb
-        xi = g_points(i);
-        eta = g_points(j);
-        w = g_weights(i) * g_weights(j);
-        [Bm,Bb,detJ]=obj.formBmb(xi,eta);
-        % Integration through thickness
-        % Stiffness = B_m' * D_m * B_m * t + B_b' * D_b * B_b * (t^3/12) + Shear
+% Membrane and Bending term integration
+[g_points, g_weights] = MathFEM.Gauss_p(Gpoint_mb);
+[gp_xi, gp_eta] = meshgrid(g_points, g_points);
+gp_w = g_weights(:) * g_weights(:)';
+gp_w = gp_w(:);
+% Vectorized B-matrix call for all points at once
+[Bm_all, Bb_all, detJ_all] = obj.formBmb(gp_xi(:), gp_eta(:));
 
-        h = obj.Thickness;
+h = obj.Thickness;
+h3_12 = (h^3 / 12);
 
-        % Membrane Stiffness (Constant through thickness)
-        Km = Bm' * D_mb * Bm * h;
-
-        % Bending Stiffness (z^2 integral -> h^3/12)
-        Kb = Bb' * D_mb * Bb * (h^3 / 12);
-
-        % Shear Stiffness (Constant through thickness * shear correction)
-        % Ks = Bs' * D_s * Bs * h;
-
-        % Total Element Stiffness contribution at this Gauss point
-        Ke = Ke + (Km + Kb ) * detJ * w;
-    end
+for k = 1:length(gp_w)
+    Bm = Bm_all(:,:,k); Bb = Bb_all(:,:,k);
+    Ke = Ke + (Bm' * D_mb * Bm * h + Bb' * D_mb * Bb * h3_12) * (detJ_all(k) * gp_w(k));
 end
 
-% Shear term
-[g_points,g_weights]=MathFEM.Gauss_p(Gpoint_s);
-for i = 1:Gpoint_s
-    for j = 1:Gpoint_s
-        xi = g_points(i);
-        eta = g_points(j);
-        w = g_weights(i) * g_weights(j);
-        [Bs,detJ]=obj.formBs(xi,eta);
-        % Integration through thickness
-        % Stiffness = B_m' * D_m * B_m * t + B_b' * D_b * B_b * (t^3/12) + Shear
-        h = obj.Thickness;
-        % Membrane Stiffness (Constant through thickness)
-        % Bending Stiffness (z^2 integral -> h^3/12)
-        % Shear Stiffness (Constant through thickness * shear correction)
-        Ks = Bs' * D_s * Bs * h;
-        % Total Element Stiffness contribution at this Gauss point
-        Ke = Ke + Ks* detJ * w;
-    end
+% Shear term integration
+[g_points, g_weights] = MathFEM.Gauss_p(Gpoint_s);
+[gp_xi, gp_eta] = meshgrid(g_points, g_points);
+gp_w = g_weights(:) * g_weights(:)';
+gp_w = gp_w(:);
+[Bs_all, detJ_s] = obj.formBs(gp_xi(:), gp_eta(:));
+
+for k = 1:length(gp_w)
+    Bs = Bs_all(:,:,k);
+    Ke = Ke + (Bs' * D_s * Bs * h) * (detJ_s(k) * gp_w(k));
 end
 
 end

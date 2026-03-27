@@ -29,7 +29,7 @@ for e = 1:nElems
     % Pre-compute scatter indices
     sctr = zeros(1, 48);
     for n = 1:8
-        start_dof = (idx(n) - 1) * 6;
+        start_dof = (double(idx(n)) - 1) * 6;
         local_start = (n - 1) * 6;
         sctr(local_start+1 : local_start+6) = start_dof + (1:6);
     end

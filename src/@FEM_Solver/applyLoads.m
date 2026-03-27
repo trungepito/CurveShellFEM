@@ -4,11 +4,16 @@ obj.GlobalF = zeros(nNodes*6, 1);
 if isempty(obj.Model.Loads), return; end
 
 if istable(obj.Model.Loads)
-    % Utilizing the table form of the Model.Loads (Modern)
-    idx=(obj.Model.Loads.Node-1)*6+obj.Model.Loads.DOF;
-    obj.GlobalF(idx)=obj.GlobalF(idx)+obj.Model.Loads.Value;
+    % Modern table-based load interface (handles nodal and integrated surface loads)
+    for i = 1:size(obj.Model.Loads, 1)
+        node = obj.Model.Loads.Node{i};
+        dof  = obj.Model.Loads.DOF{i};
+        val  = obj.Model.Loads.Value{i};
+        idx  = (node-1)*6 + dof;
+        obj.GlobalF(idx) = obj.GlobalF(idx) + val;
+    end
 else
-    % Matrix form: [NodeID, DOF_Index, Value] (Legacy)
+    % Legacy matrix form: [NodeID, DOF_Index, Value]
     idx = (obj.Model.Loads(:,1)-1)*6 + obj.Model.Loads(:,2);
     obj.GlobalF(idx) = obj.GlobalF(idx) + obj.Model.Loads(:,3);
 end

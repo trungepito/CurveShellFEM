@@ -67,8 +67,8 @@ Pre.addBC(Lend, 1:2,0,'Support');
 % Load at Tip (Z=3)
 % Select nodes via plane selector
 tipNodes = Pre.selectNodesOnPlane(3, specs(1));
-% Pre.addNodalLoad(tipNodes, 3, -0.7*1000,'Load1'); % Distributed point load
-Pre.addBC(Lend, 3,-10,'Support');
+Pre.addNodalLoad(tipNodes, 3, -0.7*1000,'Load1'); % Distributed point load
+% Pre.addBC(Lend, 3,-10,'Support');
 % 5. Solve & Plot
 Sol = FEM_Solver(Pre);
 % Sol.solveStatic();

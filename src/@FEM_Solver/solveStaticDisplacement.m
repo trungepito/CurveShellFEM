@@ -4,8 +4,6 @@ obj.assembleK();
 fprintf('[Solver] Applying Loads and BCs...\n');
 obj.applyLoads();
 % obj.applyConstraints();
-% Apply Constraints (Identity/Penalty Method)
-
 fprintf('[Solver] Solving Linear System...\n');
 nDofs = size(obj.GlobalF,1);
 fixed_dofs = [];

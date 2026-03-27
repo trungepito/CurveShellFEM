@@ -77,7 +77,7 @@ Pre.addBC(Lend, 1:2,0,'Support');
 % Select nodes via plane selector
 % tipNodes = Pre.selectNodesOnPlane(3, specs(1));
 Pre.addNodalLoad(Lend, 3, -10*1000,'Load1'); % Distributed point load
-Pre.addBC(Lend, 3,-1.5,'Disp');
+Pre.addBC(Lend, 3,-15,'Disp');
 Pre.addBC(Lend, 3,0,'Undisp');
 % 5. Solve & Plot
 Sol = FEM_Solver(Pre);
@@ -98,23 +98,23 @@ S3.activateLoad('Load1');
 
 solOpt=SolverOptions;
 Sol2=FEM_Solver_Adaptive(Pre,solOpt);
-Sol2.solve({S1,S2,S3});
+Sol2.solve({S1});
 %%
-Post = FEM_Postprocessor(Pre, Sol);
+Post = FEM_Postprocessor(Pre, Sol2);
 opts.layer='Mid';
-opts.scale=0.5;
+opts.scale=10;
 opts.Nummode=2;
 Post.plotField('Displacement', opts);
 title('Displacement Magnitude');
 view(3)
-%%
-% Post.plotField('VonMises', opts);
-Post2 = FEM_Postprocessor(Pre, Sol2);
-
-Post2.animateDisplacement(10,2,1);
-for i=1:size(Sol2.U_Hist,2)
-    Sol2.U=Sol2.U_Hist(:,i);
-Post2.plotField('Displacement', opts);
-title('Displacement Magnitude NL');
-end
-view(3);
+% %%
+% % Post.plotField('VonMises', opts);
+% Post2 = FEM_Postprocessor(Pre, Sol2);
+% 
+% % Post2.animateDisplacement(10,2,1);
+% for i=1:size(Sol2.U_Hist,2)
+%     Sol2.U=Sol2.U_Hist(:,i);
+% Post2.plotField('Displacement', opts);
+% title('Displacement Magnitude NL');
+% end
+% view(3);

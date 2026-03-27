@@ -46,7 +46,7 @@ classdef FEM_Solver_Adaptive < FEM_Solver
         
     end
 
-    methods (Access = private)
+    methods (Access = protected)
         % =================================================================
         % STAGE SOLVER (Handles Time Stepping & Bisection)
         % =================================================================

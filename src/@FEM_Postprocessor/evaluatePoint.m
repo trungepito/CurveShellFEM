@@ -2,16 +2,21 @@ function [val, tensor] = evaluatePoint(obj, elObj, u_el, xi, eta, z, type, elemI
 % Helper to calculate physics at a specific (xi, eta, z)
 val=[];
 tensor=[];
-% 1. Kinematics
-[Bm,Bb,~]=elObj.formBmb(xi,eta);
-[Bs,~]=elObj.formBs(xi,eta);
+% 1. Map Global DOFs (48) to Mixed Basis (40)
+T_hybrid = elObj.T_cached;
+u_el_l = T_hybrid * u_el;
+u_el_l(6:6:end) = []; % Strip drilling
+u_mix = elObj.per_5_blkdiag() * u_el_l;
+
+% 2. Kinematics
+[Bm_all, Bb_all, ~] = elObj.formBmb(xi, eta);
+[Bs_all, ~] = elObj.formBs(xi, eta);
+Bm = Bm_all(:,:,1); Bb = Bb_all(:,:,1); Bs = Bs_all(:,:,1);
+
 % 3. Compute Strains
-eps_m = Bm * u_el; % [ex, ey, gxy]
-kappa = Bb * u_el; % [kx, ky, kxy]
-gamma = Bs * u_el; % [gyz, gxz]
-% ... (Recalculate J, Bm, Bb, Bs, etc here) ...
-% To save space, assuming a helper method "getStrainAtPoint" exists or copy logic
-% [eps_m, kappa, gamma] = elObj.getStrains(xi, eta, u_el);
+eps_m = Bm * u_mix; % [ex, ey, gxy]
+kappa = Bb * u_mix; % [kx, ky, kxy]
+gamma = Bs * u_mix; % [gyz, gxz]
 
 % --- ABBREVIATED KINEMATICS FOR DISPLAY ---
 % You must copy the B-Matrix generation logic here

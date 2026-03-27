@@ -1,57 +1,57 @@
 function solve(obj, StageList)
-% SOLVE - Master arc-length solve loop over a list of LoadingStage objects.
+% SOLVE  Master arc-length analysis loop over a cell array of LoadingStages.
 %
-% Overrides FEM_Solver_Adaptive.solve to route every stage through the
-% arc-length corrector instead of the standard Newton bisection path.
+% Overrides FEM_Solver_Adaptive.solve.  Every stage is routed through
+% solveArcLengthStage instead of the standard Newton bisection path.
+%
+% History arrays (LambdaHist, ArcLengthHistory, U_Hist) are reset at the
+% start of every call so the object can be reused without stale data.
 %
 % Syntax:
 %   obj.solve(StageList)
 %
-% Inputs:
-%   StageList - Cell array of LoadingStage objects. Each stage carries its
-%               own arc-length parameters (ArcLengthRadius, ArcLengthMin,
-%               ArcLengthMax, ConstraintType, ControlDOF).
-%
-% The arc-length load factor (lambda) is tracked internally.  After all
-% stages are complete, obj.LambdaHist and obj.ArcLengthHistory contain the
-% per-step records alongside the displacement history in obj.U_Hist.
-%
 % See also: solveArcLengthStage, arcLengthStep
 
-fprintf('--- Starting Arc-Length Analysis ---\n');
-fprintf('    Stages: %d  |  Constraint default: %s\n', ...
+fprintf('=== Arc-Length Analysis  [%d stage(s), default constraint: %s] ===\n', ...
     length(StageList), obj.ConstraintType);
 
-% Ensure history arrays start empty so the first call to solve is clean
-% even if the object is reused across multiple analyses.
+% ------------------------------------------------------------------
+% Reset all history so re-running on the same object starts clean.
+% FIX: previous version did not reset obj.U, leaving stale displacements
+% as the initial condition for the first predictor step.
+% ------------------------------------------------------------------
+nDofs                = size(obj.Model.Mesh.Nodes, 1) * 6;
+obj.U                = zeros(nDofs, 1);
 obj.LambdaHist       = [];
 obj.ArcLengthHistory = [];
-obj.U_Hist           = zeros(length(obj.U), 0);  % nDofs x 0 (grows dynamically)
+obj.U_Hist           = zeros(nDofs, 0);   % grows column-by-column
 obj.History_Time     = [];
 obj.StepCount        = 0;
 obj.Time             = 0;
+obj.F_ext_start      = zeros(nDofs, 1);
 
-for s = 1:length(StageList)
-    currentStage = StageList{s};
+for s = 1 : length(StageList)
+    Stage = StageList{s};
     fprintf('\n>>> Stage %d / %d\n', s, length(StageList));
 
-    % Apply stage-level constraint overrides if the stage supplies them
-    if isprop(currentStage, 'ConstraintType') && ~isempty(currentStage.ConstraintType)
-        obj.ConstraintType = currentStage.ConstraintType;
+    % Apply stage-level overrides for constraint type and control DOF.
+    % isprop guards against plain structs being passed instead of
+    % LoadingStage objects.
+    if isprop(Stage, 'ConstraintType') && ~isempty(Stage.ConstraintType)
+        obj.ConstraintType = Stage.ConstraintType;
     end
-    if isprop(currentStage, 'ControlDOF') && ~isempty(currentStage.ControlDOF)
-        obj.ControlDOF = currentStage.ControlDOF;
+    if isprop(Stage, 'ControlDOF') && ~isempty(Stage.ControlDOF)
+        obj.ControlDOF = Stage.ControlDOF;
     end
 
-    % Delegate to the stage-level driver
-    success = obj.solveArcLengthStage(currentStage, s);
+    success = obj.solveArcLengthStage(Stage, s);
 
     if ~success
-        fprintf('!!! Arc-length analysis aborted at stage %d !!!\n', s);
+        fprintf('!!! Analysis aborted at stage %d.\n', s);
         return;
     end
 end
 
-fprintf('\n--- Arc-Length Analysis Complete ---\n');
-fprintf('    Total converged steps: %d\n', obj.StepCount);
+fprintf('\n=== Arc-Length Analysis complete — %d converged steps total ===\n', ...
+    obj.StepCount);
 end

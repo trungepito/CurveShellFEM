@@ -40,12 +40,12 @@ maxZ = max(Pre.Mesh.Nodes(:,3));
 centerNodeID = find(abs(Pre.Mesh.Nodes(:,3) - maxZ) < 1e-4 & abs(Pre.Mesh.Nodes(:,1)) < 0.1);
 centerNodeID = centerNodeID(1); % Take first matching
 
-target_disp = -2.5; % Push down from H=1.34 to Z=-1.16
+target_disp = -0.5; % Push down from H=1.34 to Z=-1.16
 
 % 5. Solve (Plastic)
 SolPlast = FEM_Solver_NL(Pre);
 fprintf('\n--- RUNNING PLASTIC ANALYSIS ---\n');
-SolPlast.solveDisplacementControl(centerNodeID, 3, target_disp, 40, 15, 1e-3);
+SolPlast.solveDisplacementControl(centerNodeID, 3, target_disp, 50, 15, 1e-3);
 
 % 6. Solve (Elastic for Comparison)
 PreElastic = FEM_Preprocessor_v2(E, nu, t);

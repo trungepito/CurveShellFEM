@@ -30,7 +30,8 @@ classdef FEM_Postprocessor < handle
         plotPrincipalVectors(obj, layer)
         plotLoadDisplacement(obj, nodeID, dofID)
         plotReactionDispCurve(obj, controlNodeID, controlDOF)
-        values = recoverPlasticFront(obj)
+        values = recoverNodalStressSPR(obj, type, layer)
+        [error_norm_el, total_error] = estimateErrorNorms(obj)
         animateDisplacement(obj, scale,speed, SaveVideo, VideoName)
         animateScenario(obj, plotNodeID, plotDOF, scaleFactor, speed)
     end
