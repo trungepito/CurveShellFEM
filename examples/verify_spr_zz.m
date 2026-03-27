@@ -29,5 +29,5 @@ else
     fprintf('[FAIL] Invalid error estimate.\n');
 end
 
-% 4. (Optional) Visualize
-% Post.renderPlot(err_el, 'Energy Error Norm', struct('layer', 'Mid'));
+%% 4. (Optional) Visualize
+Post.renderPlot(err_el, 'Energy Error Norm', struct('layer', 'Mid'));

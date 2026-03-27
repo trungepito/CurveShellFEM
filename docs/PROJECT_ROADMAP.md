@@ -50,5 +50,11 @@ For current detailed execution steps, see the [Refactored Project Plan](file:///
 - [ ] Assumed Natural Strain (ANS) for transverse shear.
 - [ ] Enhanced Assumed Strain (EAS) for membrane/bending.
 
+## Phase 13: Preprocessor Modularization & Graded Meshing [PLANNED]
+- [ ] Refactor geometry primitives into a dedicated `GeometryEngine`.
+- [ ] Implement clustered/biased node generation in `meshQuadPatch`.
+- [ ] Enforce schema validation on Preprocessor Data tables via `@FEM_DataManager`.
+- [ ] Add internal Jacobian diagnostic routines for mesh distortion.
+
 ---
 *Roadmap managed by the **Lead Architect**.*

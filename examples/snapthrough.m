@@ -51,11 +51,11 @@ centerNodeID=Pre.selectNodesByBox(-0.1,0.1,2.9,3.1,R-H-0.1,R-H+0.1);
 target_disp = -2.80; % Push down past the snap point (H approx 0.06m)
 
 % 4. Solve
-Sol = FEM_Solver_NL(Pre);
-
-% solveDisplacementControl(Node, DOF, Target, Steps, MaxIter, Tol)
-% We push DOF 3 (Z)
-Sol.solveDisplacementControl(centerNodeID, 3, target_disp, 20, 10, 1e-4);
+Pre.addBC(centerNodeID, 3, target_disp, 'DispZ');
+opts = SolverOptions(); opts.Tolerance=1e-4; opts.InitialDt=1/20; opts.MaxIterations=10;
+Sol = FEM_Solver_Adaptive(Pre, opts);
+S1 = LoadingStage(1.0); S1.activateBC('Support'); S1.activateBC('DispZ');
+Sol.solve({S1});
 
 %% 5. Post-Process
 Post = FEM_Postprocessor(Pre, Sol);

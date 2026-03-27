@@ -36,10 +36,12 @@ nodes_right = Pre.selectNodesOnPlane(1, 1, 0.01);
 target_disp = 0.01; % 1% strain (well into plastic regime)
 
 % 3. Solve
-Sol = FEM_Solver_NL(Pre);
-% We control Node 2, DOF 1 (X)
 controlNode = nodes_right(1);
-Sol.solveDisplacementControl(controlNode, 1, target_disp, 20, 10, 1e-6);
+Pre.addBC(controlNode, 1, target_disp, 'Tip_Disp');
+opts = SolverOptions(); opts.Tolerance=1e-6; opts.InitialDt=1/20; opts.MaxIterations=10;
+Sol = FEM_Solver_Adaptive(Pre, opts);
+S1 = LoadingStage(1.0); S1.activateBC('Fix'); S1.activateBC('Tip_Disp');
+Sol.solve({S1});
 
 %% 4. Post-Process & Verify
 Post = FEM_Postprocessor(Pre, Sol);

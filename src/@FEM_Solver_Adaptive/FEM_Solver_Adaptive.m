@@ -3,6 +3,7 @@ classdef FEM_Solver_Adaptive < FEM_Solver_Nonlinear
     properties
         F_ext_start       % external for at start of each stage!
         ReactionHist
+        History_Load      % Number of steps taken
     end
 
     methods

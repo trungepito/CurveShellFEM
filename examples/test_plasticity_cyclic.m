@@ -26,24 +26,27 @@ rightNodes = Pre.selectNodesByBox(0.099, 0.101, -1, 1, -1, 1);
 controlNode = rightNodes(1);
 
 % 4. Solver
-Sol = FEM_Solver_NL(Pre);
+Pre.addBC(controlNode, 1, 0.002, 'DispT_1');
+Pre.addBC(controlNode, 1, -0.002, 'DispC_2');
+Pre.addBC(controlNode, 1, 0.002, 'DispT_3');
+
+opts = SolverOptions(); opts.Tolerance=1e-4; opts.InitialDt=1/10; opts.MaxIterations=5;
+Sol = FEM_Solver_Adaptive(Pre, opts);
 
 % --- CYCLE 1: Tension ---
-fprintf('\n--- CYCLE 1: TENSION ---\n');
-Sol.solveDisplacementControl(controlNode, 1, 0.002, 10, 5, 1e-4);
-
+S1 = LoadingStage(1.0); S1.activateBC('Fixed'); S1.activateBC('DispT_1');
 % --- CYCLE 2: Compression ---
-fprintf('\n--- CYCLE 2: COMPRESSION ---\n');
-Sol.solveDisplacementControl(controlNode, 1, -0.002, 20, 5, 1e-4);
-
+S2 = LoadingStage(1.0); S2.activateBC('Fixed'); S2.activateBC('DispC_2');
 % --- CYCLE 3: Re-Tension ---
-fprintf('\n--- CYCLE 3: RE-TENSION ---\n');
-Sol.solveDisplacementControl(controlNode, 1, 0.002, 20, 5, 1e-4);
+S3 = LoadingStage(1.0); S3.activateBC('Fixed'); S3.activateBC('DispT_3');
+
+fprintf('\n--- RUNNING CYCLIC PLASTICITY (3 STAGES) ---\n');
+Sol.solve({S1, S2, S3});
 
 % 5. Plot Results
 figure('Name', 'Cyclic Loading: Bauschinger Effect');
 U_tip = Sol.U_Hist((controlNode-1)*6 + 1, :);
-Force = Sol.ReactionHist;
+Force = cell2mat(Sol.ReactionHist);
 plot(U_tip * 1000, Force/1e3, 'b-o', 'LineWidth', 2);
 grid on;
 xlabel('Axial Displacement (mm)'); ylabel('Axial Force (kN)');

@@ -75,12 +75,10 @@ Sol = FEM_Solver(Pre);
 Sol.solveStaticDisplacement();
 Sol.solveBuckling(10);
 
-% SolNLopt.numLoadSteps=20;
-% SolNLopt.maxIter = 100; 
-% SolNLopt.tol = 1e-6;
-% SolNLopt.linesearch=0;
-% Sol2=FEM_Solver_NL(Pre);
-% Sol2.solveNonLinear(SolNLopt);
+optsNL = SolverOptions(); optsNL.Tolerance=1e-4; optsNL.InitialDt=1/20; optsNL.MaxIterations=20;
+Sol2 = FEM_Solver_Adaptive(Pre, optsNL);
+S_nl = LoadingStage(1.0); S_nl.activateBC('Support'); S_nl.activateLoad('Load1');
+Sol2.solve({S_nl});
 %%
 Post = FEM_Postprocessor(Pre, Sol);
 opts.layer='Top';

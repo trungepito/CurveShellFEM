@@ -43,26 +43,31 @@ centerNodeID = centerNodeID(1); % Take first matching
 target_disp = -0.5; % Push down from H=1.34 to Z=-1.16
 
 % 5. Solve (Plastic)
-SolPlast = FEM_Solver_NL(Pre);
+Pre.addBC(centerNodeID, 3, target_disp, 'Tip_Disp');
+opts = SolverOptions(); opts.Tolerance=1e-3; opts.InitialDt=1/50; opts.MaxIterations=15;
+SolPlast = FEM_Solver_Adaptive(Pre, opts);
+S1 = LoadingStage(1.0); S1.activateBC('Pinned'); S1.activateBC('Tip_Disp');
 fprintf('\n--- RUNNING PLASTIC ANALYSIS ---\n');
-SolPlast.solveDisplacementControl(centerNodeID, 3, target_disp, 50, 15, 1e-3);
+SolPlast.solve({S1});
 
 % 6. Solve (Elastic for Comparison)
 PreElastic = FEM_Preprocessor_v2(E, nu, t);
 PreElastic.createExtrusion(profile_nodes, segs, direction, Length, 8); 
 PreElastic.addBC([leftNodes; rightNodes], 1:3, 0, 'Pinned');
-SolElastic = FEM_Solver_NL(PreElastic);
+PreElastic.addBC(centerNodeID, 3, target_disp, 'Tip_Disp');
+SolElastic = FEM_Solver_Adaptive(PreElastic, opts);
 fprintf('\n--- RUNNING ELASTIC ANALYSIS ---\n');
-SolElastic.solveDisplacementControl(centerNodeID, 3, target_disp, 40, 15, 1e-3);
+SolElastic.solve({S1});
 
 % 7. Solve (GNI for Comparison)
 PreGNI = FEM_Preprocessor_v2(E, nu, t);
 PreGNI.Material.Type = 'GeometricNL';  % Enable GNI
 PreGNI.createExtrusion(profile_nodes, segs, direction, Length, 8);
 PreGNI.addBC([leftNodes; rightNodes], 1:3, 0, 'Pinned');
-SolGNI = FEM_Solver_NL(PreGNI);
+PreGNI.addBC(centerNodeID, 3, target_disp, 'Tip_Disp');
+SolGNI = FEM_Solver_Adaptive(PreGNI, opts);
 fprintf('\n--- RUNNING GNI ANALYSIS ---\n');
-SolGNI.solveDisplacementControl(centerNodeID, 3, target_disp, 40, 15, 1e-3);
+SolGNI.solve({S1});
 
 % 8. Post-Process
 figure('Name', 'Load-Displacement Comparison');
@@ -72,25 +77,25 @@ up = SolPlast.U_Hist;
 if ~isempty(up)
     % Find the specific DOF entry (Z at centerNodeID)
     c_idx = (centerNodeID-1)*6 + 3;
-    up_vals = up(c_idx, :); 
-    rp_vals = SolPlast.ReactionHist;
-    plot(up_vals, -rp_vals/1e3, 'r-', 'LineWidth', 2, 'DisplayName', 'Elastoplastic (J2)');
+    rp_vals = cell2mat(SolPlast.ReactionHist);
+    up_vals = up(c_idx, end-size(rp_vals,2)+1:end); 
+    plot(up_vals, -rp_vals(end, :)/1e3, 'r-', 'LineWidth', 2, 'DisplayName', 'Elastoplastic (J2)');
 end
 
 ue = SolElastic.U_Hist;
 if ~isempty(ue)
     c_idx = (centerNodeID-1)*6 + 3;
-    ue_vals = ue(c_idx, :);
-    re_vals = SolElastic.ReactionHist;
-    plot(ue_vals, -re_vals/1e3, 'k--', 'LineWidth', 2, 'DisplayName', 'Purely Elastic');
+    re_vals = cell2mat(SolElastic.ReactionHist);
+    ue_vals = ue(c_idx, end-size(re_vals,2)+1:end);
+    plot(ue_vals, -re_vals(end, :)/1e3, 'k--', 'LineWidth', 2, 'DisplayName', 'Purely Elastic');
 end
 
 ug = SolGNI.U_Hist;
 if ~isempty(ug)
     c_idx = (centerNodeID-1)*6 + 3;
-    ug_vals = ug(c_idx, :);
-    rg_vals = SolGNI.ReactionHist;
-    plot(ug_vals, -rg_vals/1e3, 'b-', 'LineWidth', 2, 'DisplayName', 'GNI (Geometric NL)');
+    rg_vals = cell2mat(SolGNI.ReactionHist);
+    ug_vals = ug(c_idx, end-size(rg_vals,2)+1:end);
+    plot(ug_vals, -rg_vals(end, :)/1e3, 'b-', 'LineWidth', 2, 'DisplayName', 'GNI (Geometric NL)');
 end
 
 xlabel('Z-Displacement (m)'); ylabel('Reaction Force (kN)');

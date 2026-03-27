@@ -70,11 +70,11 @@ target_disp=-0.020;
 % SolNLopt.linesearch=0;
 % Sol2=FEM_Solver_NL(Pre);
 % Sol2.solveNonLinear(SolNLopt)
-Sol = FEM_Solver_NL(Pre);
-
-% solveDisplacementControl(Node, DOF, Target, Steps, MaxIter, Tol)
-% We push DOF 3 (Z)
-Sol.solveDisplacementControl(crosL, 1, target_disp, 20, 30, 1e-4);
+opts = SolverOptions(); opts.Tolerance=1e-4; opts.InitialDt=1/20; opts.MaxIterations=30;
+Pre.addBC(crosL, 1, target_disp, 'PushX');
+Sol = FEM_Solver_Adaptive(Pre, opts);
+S1 = LoadingStage(1.0); S1.activateBC('Support'); S1.activateBC('PushX');
+Sol.solve({S1});
 %%
 % 7. Post
 Post = FEM_Postprocessor(Pre, Sol);

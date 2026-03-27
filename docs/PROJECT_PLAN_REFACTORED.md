@@ -27,5 +27,10 @@ This plan replaces the previous Phase 5 objectives with a focus on **Scientific 
 - **Primary Agents**: FEM Expert Analyst (Theory), Core Implementer (Code), Validator (Benchmarks).
 - **Status**: **PAUSED** (Awaiting Phase 10).
 
+## Phase 13: Preprocessor Modularization & Graded Meshing
+- **Objective**: Extract geometry routines, enable biased meshing, and enforce strict table schemas.
+- **Primary Agents**: Lead Architect (Coordination), Systems Engineer (Data Schema), Preprocessor Specialist (Meshing).
+- **Status**: **PROPOSED** (Audit Complete).
+
 ---
 *Plan updated by the **Lead Architect** on 2026-03-27.*

@@ -68,10 +68,14 @@ SolArc.solve({S_riks});
 % ------------------------------------------------------------------
 % 4.  Reference: displacement-control (for comparison curve)
 % ------------------------------------------------------------------
-SolDC = FEM_Solver_NL(Pre);
 target_disp = -1.8;
+Pre.addBC(centerID, 3, target_disp, 'DispControl');
+optsDC = SolverOptions(); optsDC.Tolerance=1e-4; optsDC.InitialDt=1/30; optsDC.MaxIterations=15;
+SolDC = FEM_Solver_Adaptive(Pre, optsDC);
+S_dc = LoadingStage(1.0);
+S_dc.activateBC('Support'); S_dc.activateBC('DispControl');
 fprintf('\n=== Displacement-Control Reference ===\n');
-SolDC.solveDisplacementControl(centerID, 3, target_disp, 30, 15, 1e-4);
+SolDC.solve({S_dc});
 
 %% ------------------------------------------------------------------
 % 5.  Post-processing
@@ -92,9 +96,9 @@ end
 
 % Displacement-control path
 if ~isempty(SolDC.U_Hist)
-    u_dc = SolDC.U_Hist(c_idx, :);
-    f_dc = SolDC.ReactionHist;
-    plot(u_dc, -f_dc/1e3, 'r--', 'LineWidth', 1.5, ...
+    f_dc = cell2mat(SolDC.ReactionHist);
+    u_dc = SolDC.U_Hist(c_idx, end-size(f_dc,2)+1:end);
+    plot(u_dc, -f_dc(end, :)/1e3, 'r--', 'LineWidth', 1.5, ...
         'DisplayName', 'Displacement control');
 end
 

@@ -13,6 +13,7 @@ The Preprocessor Specialist is the "Builder of the World". They ensure that the 
 3. **Normal Computation**: Ensuring consistent surface normals for shell thickness definitions.
 4. **Boundary conditions**: Implementing pressure loads and kinematic constraints.
 5. **Control Database**: Review, analyse, ensure the input and output data are consistent for the Preprocessor phase
+
 ## Contributions (Planned)
 - Refactoring the `@FEM_Preprocessor_v2` for modular mesh generation.
 - Implementation of "Adaptive Mesh Seeds" for stress concentrations.

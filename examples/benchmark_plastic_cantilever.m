@@ -26,10 +26,22 @@ rightNodes = Pre.selectNodesByBox(0.99, 1.01, -1, 1, -1, 1);
 tipNodeID = rightNodes(idx);
 
 % 5. Solve using Displacement Control (Push Down)
-Sol = FEM_Solver_NL(Pre);
+target_disp = -0.15;
+% Convert to new Stage-based solver architecture
+Pre.addBC(tipNodeID, 3, target_disp, 'Tip_Disp');
+
+opts = SolverOptions();
+opts.Tolerance = 1e-3;
+opts.MaxIterations = 15;
+opts.InitialDt = 1/20; % equivalent to 20 steps in old `solveDisplacementControl`
+
+Sol = FEM_Solver_Adaptive(Pre, opts);
+S1 = LoadingStage(1.0);
+S1.activateBC('Fixed');
+S1.activateBC('Tip_Disp');
+
 fprintf('\n--- RUNNING PLASTIC CANTILEVER ANALYSIS ---\n');
-target_disp = -0.15; 
-Sol.solveDisplacementControl(tipNodeID, 3, target_disp, 20, 15, 1e-3);
+Sol.solve({S1});
 
 % 6. Post-Process
 Post = FEM_Postprocessor(Pre, Sol);
