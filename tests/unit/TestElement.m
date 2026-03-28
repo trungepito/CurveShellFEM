@@ -50,7 +50,7 @@ classdef TestElement < matlab.unittest.TestCase
             matModel = Material_J2Plastic(200e9, 0.3, 250e6, 0);
             init_h = struct('sigma', zeros(3,1), 'eps_p', zeros(3,1), 'p', 0);
             hist = repmat(init_h, 20, 1); 
-            el = Curve8Element_Plastic(testCase.Coords, testCase.Normals, 0.01, matModel, hist);
+            el = Curve8Element(testCase.Coords, testCase.Normals, 0.01, 200e9, 0.3, matModel, hist);
             
             u_el = zeros(48, 1);
             [~, F_int] = el.computeGlobalMatrix6DOF(u_el);

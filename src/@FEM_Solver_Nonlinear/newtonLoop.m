@@ -1,32 +1,53 @@
 function [converged, U_out, reaction, iter] = newtonLoop(obj, F_external, U_curr, fixed_dofs)
-    % NEWTONLOOP - Core iterative solver for any nonlinear problem.
-    nDofs = length(U_curr);
-    free_dofs = setdiff(1:nDofs, fixed_dofs);
+% NEWTONLOOP - Core iterative solver for any nonlinear problem.
+%
+% v3.0: Standardized robust implementation.
+% - Relative tolerance: ||R|| / ||F_ext|| <= 1e-6
+% - Residual convention: R = F_int - F_external
+% - Trial-Commit: Stores TrialHist and commits only on convergence.
 
-    for iter = 1:obj.Options.MaxIterations
-        % 1. Get Tangent Stiffness & Internal Force
-        [Kt, F_int] = obj.assembleTangentSystem(U_curr);
+nDofs = length(U_curr);
+free_dofs = setdiff(1:nDofs, fixed_dofs);
+tol = 1e-6; % Relative tolerance per v3.0 standard
+if isprop(obj, 'Options') && isfield(obj.Options, 'Tolerance')
+    tol = obj.Options.Tolerance;
+end
 
-        % 2. Calculate Residual
-        R = F_external - F_int;
-        err = norm(R(free_dofs));
+% Initial force norm for relative scaling
+f_ext_norm = norm(F_external(free_dofs));
+if f_ext_norm < 1e-12, f_ext_norm = 1.0; end % Protect against zero load
 
-        % Check Convergence
-        if err < obj.Options.Tolerance
-            converged = true;
-            U_out = U_curr;
-            reaction = F_int(fixed_dofs);
-            return;
-        end
+converged = false;
+TrialHist = [];
 
-        % 3. Solve for increment
-        dU_f = Kt(free_dofs, free_dofs) \ R(free_dofs);
+for iter = 1:obj.Options.MaxIterations
+    % 1. Get Tangent Stiffness & Internal Force
+    % Returns TrialHist for state management (SK-05)
+    [Kt, F_int, TrialHist] = obj.assembleTangentSystem(U_curr);
 
-        % 4. Update Solution
-        U_curr(free_dofs) = U_curr(free_dofs) + dU_f;
+    % 2. Calculate Residual (R = F_int - F_ext)
+    R = F_int - F_external;
+    err_rel = norm(R(free_dofs)) / f_ext_norm;
+
+    % Check Convergence (Relative)
+    if err_rel <= tol
+        converged = true;
+        U_out = U_curr;
+        reaction = F_int(fixed_dofs);
+        
+        % 3. Commit History (Trial-Commit Pattern)
+        obj.commitHistory(TrialHist);
+        return;
     end
 
-    U_out = U_curr;
-    reaction = [];
-    converged = false;
+    % 4. Solve for increment (du = -Kt \ R)
+    dU_f = Kt(free_dofs, free_dofs) \ (-R(free_dofs));
+
+    % 5. Update Solution
+    U_curr(free_dofs) = U_curr(free_dofs) + dU_f;
+end
+
+U_out = U_curr;
+reaction = [];
+converged = false;
 end

@@ -1,6 +1,8 @@
 % benchmark_plastic_snapthrough.m
 % Interaction between Geometric and Material Nonlinearity.
 clear; clc; close all;
+addpath('src');
+mkdir('docs/dev_logs/plots');
 
 % 1. Create a Shallow Curved Panel (Arc)
 E = 200e9; nu = 0.3; t = 0.05; 
@@ -107,3 +109,9 @@ PostP = FEM_Postprocessor(Pre, SolPlast);
 PostP.plotField('PlasticFront');
 title('Yield Penetration (%)');
 view(3);
+saveas(gcf, 'docs/dev_logs/plots/Phase2_YieldFront.png');
+
+% Save Load-Displacement Figure
+saveas(figure(1), 'docs/dev_logs/plots/Phase2_LoadDisplacement.png');
+
+fprintf('\nBENCHMARK_COMPLETE\n');

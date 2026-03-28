@@ -9,8 +9,15 @@ if nargin < 2 || isempty(u_el)
     fe_mixed = zeros(40, 1);
     NewHist = obj.HistoryData;
 else
+    % Transform 48-DOF global displacement to 40-DOF mixed basis:
+    %   1. Rotate global -> local frame via T_hybrid
+    %   2. Strip the 6th (drilling) DOF from each of the 8 nodes
+    u_local_48 = T_hybrid * u_el;
+    keep_dofs = reshape(bsxfun(@plus, (0:7)'*6, (1:5)), [], 1); % [1:5, 7:11, ...]
+    u_mixed_40 = u_local_48(keep_dofs);
+
     % Full Tangent and Internal Force
-    [Ke_mixed, fe_mixed, NewHist] = obj.computeTangentStiffnessAndForce(u_el);
+    [Ke_mixed, fe_mixed, NewHist] = obj.computeTangentStiffnessAndForce(u_mixed_40);
 end
 
 % Expand 40-DOF mixed basis to 48-DOF global basis

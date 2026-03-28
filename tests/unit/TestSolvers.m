@@ -37,10 +37,13 @@ classdef TestSolvers < matlab.unittest.TestCase
             % Apply larger load
             testCase.Model.addNodalLoad(2, 3, -1000, 'TIP'); 
             
-            Sol = FEM_Solver_NL(testCase.Model);
+            % FEM_Solver_Nonlinear is abstract; FEM_Solver_Adaptive is the
+            % concrete class exposing the public solve() entry point.
             opts = SolverOptions();
-            opts.numLoadSteps = 2;
-            Sol.solveNonLinear(opts);
+            Sol = FEM_Solver_Adaptive(testCase.Model, opts);
+            S1 = LoadingStage(1.0);
+            S1.activateLoad('TIP');
+            Sol.solve({S1});
             
             testCase.verifyNotEmpty(Sol.U);
             testCase.verifySize(Sol.U, [8*6, 1]);
