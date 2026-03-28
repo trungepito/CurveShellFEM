@@ -1,0 +1,3 @@
+- **2026-03-27**: Starting task: Phase 13 Schema Validation & Data Pipeline Restructuring.
+  - Implemented `validatePreprocessorOutput.m` in `@FEM_DataManager` to enforce pre-solver schema validations.
+  - Bound the validation check to the `FEM_Solver` root constructor to ensure no module can bypass the health check.

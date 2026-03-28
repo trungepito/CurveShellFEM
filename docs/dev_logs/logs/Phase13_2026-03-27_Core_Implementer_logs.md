@@ -1,0 +1,4 @@
+- **2026-03-27**: Starting task: Phase 13 Geometry Isolation.
+  - Extracted `createExtrusion`, `createIBeam`, `createPlate`, `createPlateWithHole`, `createCylinderPanel` from `FEM_Preprocessor_v2`.
+  - Created standalone static factory `GeometryEngine`.
+  - Executed a global PowerShell rewrite across `examples/` to strictly enforce the new `<Class>.<method>(Pre, ...)` syntax.
