@@ -3,10 +3,12 @@
 % Case: Simply Supported Square Plate under Uni-axial Compression (Nx)
 % Theoretical Pcr = 4 * pi^2 * D / b^2 (for square plate)
 
+addpath(genpath('src'));
+mkdir('docs/dev_logs/plots');
 clear; clc; close all;
 fprintf('============================================================\n');
-fprintf('  BUCKLING BENCHMARK: Simply Supported Square Plate\n');
-fprintf('============================================================\n');
+  fprintf('  BUCKLING BENCHMARK: Simply Supported Square Plate\n');
+  fprintf('============================================================\n');
 
 %% 1. Geometry and Material
 E  = 200e9;   
@@ -71,8 +73,10 @@ end
 
 %% 6. Visualization
 Post = FEM_Postprocessor(Pre, Sol);
-figure('Name','1st Buckling Mode','Color','w');
+figure('Name','1st Buckling Mode','Color','w', 'Visible', 'off');
 opts_plot.scale = 0.2; 
 opts_plot.Nummode = 1;
 Post.plotField('Buckling', opts_plot);
-title(sprintf('1st Buckling Mode (Pcr = %.2e)', Pcr_sim));
+title(sprintf('1st Buckling Mode (Pcr = %.2e)', Sol.BucklingFactors(1)));
+saveas(gcf, 'docs/dev_logs/plots/Phase3_BucklingMode1.png');
+fprintf('\nBENCHMARK_COMPLETE\n');

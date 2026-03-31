@@ -14,7 +14,7 @@ classdef TestCurve8Element_GNI < matlab.unittest.TestCase
             testCase.Coords = [0 0 0; 1 0 0; 1 1 0; 0 1 0; 0.5 0 0; 1 0.5 0; 0.5 1 0; 0 0.5 0];
             testCase.Normals = repmat([0 0 1], 8, 1);
             testCase.Material.E = 200e9; testCase.Material.nu = 0.3; testCase.Material.t = 0.01;
-            testCase.El = Curve8Element_GNI(testCase.Coords, testCase.Normals, 0.01, 200e9, 0.3);
+            testCase.El = Curve8Element_ANS_EAS(testCase.Coords, testCase.Normals, 0.01, 200e9, 0.3);
         end
     end
 

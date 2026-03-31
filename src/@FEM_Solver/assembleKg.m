@@ -44,8 +44,8 @@ for e = 1:numElems
         sctr(local_start+1 : local_start+6) = start_dof + (1:6);
     end
 
-    % Flatten into triplets
-    [ii,jj]=meshgrid(sctr,sctr);
+    % Flatten into triplets via ndgrid (v3.0 standard: consistent with assembleK)
+    [ii, jj] = ndgrid(sctr, sctr);
     range = count + (1:nz_per_elem);
     I_idx(range) = ii(:);
     J_idx(range) = jj(:);
