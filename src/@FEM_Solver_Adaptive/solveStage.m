@@ -19,7 +19,7 @@ startU=U_converged(fixed_dofs); % starting position of the control nodes!
 deltaU=targets-U_converged(fixed_dofs); % this deltaU is the total disp change.
 % Collect the reaction of this stage in a matrix
 nStep=0;
-S_Reaction=zeros(length(fixed_dofs),30);
+S_Reaction=zeros(length(fixed_dofs),obj.Options.numLoadSteps);
 while obj.Time < t_end
     % 1. Cap dt to not overshoot the end of stage
     if (obj.Time + dt) > t_end
@@ -37,11 +37,12 @@ while obj.Time < t_end
     F_ext=obj.F_ext_start+alpha*deltaF;
 
     %Disp.
-    U_converged(fixed_dofs) = startU + deltaU * alpha;
-
+    U_trial_bc = U_converged;
+    % U_converged(fixed_dofs) = startU + deltaU * alpha;
+    U_trial_bc(fixed_dofs) = startU + deltaU * alpha;   % isolated trial copy
     fprintf('   Step t=%.4f, dt=%.4f ... ', target_time, dt);
-
-    [converged, U_trial,reaction, iters] = obj.newtonLoop(F_ext,U_converged,fixed_dofs);
+    [converged, U_trial, reaction, iters] = obj.newtonLoop(F_ext, U_trial_bc, fixed_dofs);
+    % [converged, U_trial,reaction, iters] = obj.newtonLoop(F_ext,U_converged,fixed_dofs);  
 
     % 3. Evaluate Result
     if converged
@@ -51,6 +52,8 @@ while obj.Time < t_end
         % Commit State
         obj.U = U_trial;
         U_converged = U_trial; % Update backup
+        [~, ~, TrialHist] = obj.assembleTangentSystem(U_trial);
+        obj.commitHistory(TrialHist);   % ← ADD THIS
         obj.Time = target_time;
 
         % Store History
@@ -63,7 +66,7 @@ while obj.Time < t_end
             obj.History_Time = [obj.History_Time; zeros(size(obj.History_Time))];
         end
         if nStep>size(S_Reaction,2)
-            S_Reaction=[ S_Reaction,zeros(size(S_Reaction))];
+            S_Reaction(:,size(S_Reaction,2)+1:size(S_Reaction,2)+obj.Options.numLoadSteps)=zeros(length(fixed_dofs),obj.Options.numLoadSteps,'like', S_Reaction);
         end
         obj.U_Hist(:,obj.StepCount) = obj.U;
         obj.History_Time(obj.StepCount) = obj.Time;
@@ -107,6 +110,6 @@ while obj.Time < t_end
     end
 end
 obj.F_ext_start=F_ext_target; % save for the next stage!
-obj.History_Load=nStep;
+obj.History_Load(s)=nStep;
 obj.ReactionHist{s}=S_Reaction(:,1:nStep);
 end

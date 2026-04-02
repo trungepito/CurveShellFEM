@@ -37,7 +37,7 @@ Pre.addBC(nodes_long, 3, 0, 'Hinged_UZ');
 nodeCoords = Pre.Mesh.Nodes;
 d2center = sum((nodeCoords - [R, 0, L/2]).^2, 2);
 [~, centerID] = min(d2center);
-Pre.addNodalLoad(centerID, 3, -1.0, 'Central_P');
+Pre.addNodalLoad(centerID, 3, -200000.0, 'Central_P');
 
 %% 3. PRE-STAGE: Buckling for Imperfection
 SolBuck = FEM_Solver(Pre);
@@ -57,18 +57,18 @@ Pre.setMaterialPlastic(sigY, H_iso);
 
 opts = SolverOptions();
 opts.Tolerance = 1e-3;
-Sol = FEM_Solver_ArcLength(Pre, opts);
-
+Sol = FEM_Solver_Adaptive(Pre, opts);
+% Sol = FEM_Solver_ArcLength(Pre, opts);
 % Stage Definition
-S1 = LoadingStage(500.0); % Analysis up to P=500
+S1 = LoadingStage(1.0); % Analysis up to P=500
 S1.activateBC('Hinged_UX');
 S1.activateBC('Hinged_UY');
 S1.activateBC('Hinged_UZ');
 S1.activateLoad('Central_P');
 S1.ConstraintType = 'Riks';
-S1.ArcLengthRadius = 10.0;
+S1.ArcLengthRadius = 0.010;
 
-fprintf('[Solver] Running GMNIA Arc-Length...\n');
+fprintf('[Solver] Running GMNIA Nonlinear...\n');
 Sol.solve({S1});
 
 %% 6. Post-Processing

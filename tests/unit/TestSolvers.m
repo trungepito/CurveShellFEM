@@ -7,6 +7,10 @@ classdef TestSolvers < matlab.unittest.TestCase
     
     methods(TestMethodSetup)
         function setup(testCase)
+            % Ensure project path is configured (Phase 26 fix: add path setup)
+            rootPath = fileparts(fileparts(fileparts(mfilename('fullpath'))));
+            addpath(fullfile(rootPath, 'src'));
+            
             % Small 1-element plate model
             testCase.Model = FEM_Preprocessor_v2(200e9, 0.3, 0.01);
             testCase.Model.createPlate([0 0 0], 1.0, 1.0);

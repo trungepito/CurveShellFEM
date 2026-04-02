@@ -70,7 +70,7 @@ classdef Material_J2Plastic
                 % --- EXACT ALGORITHMIC TANGENT (Dep) ---
                 Dr = (M \ D_el); 
                 denom = n_curr' * Dr * n_curr + obj.H;
-                Dep = Dr - (Dr * n_curr * n_curr' * Dr) / denom;
+                Dep = Dr - (Dr * (n_curr * n_curr') * Dr) / denom;
             end
         end
     end

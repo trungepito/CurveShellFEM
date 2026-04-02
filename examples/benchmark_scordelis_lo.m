@@ -23,7 +23,7 @@ Pre = FEM_Preprocessor_v2(E, nu, t);
 % segs: [N1, N2, CenterNode, Nu_elements]
 segs = [1, 2, 3, 20]; 
 % Extrude along Y (from 0 to 25), with 20 elements along L
-Pre.createExtrusion(profile_nodes, segs, [0, 1, 0], L_half, 20);
+Pre.createExtrusion(profile_nodes, segs, [0, 1, 0], L_half, 50);
 
 % 3. BCs (1/4 Symmetry)
 % Peak line (X=0): Symmetry about Y-Z plane

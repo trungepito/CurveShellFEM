@@ -57,21 +57,5 @@ classdef Curve8Element
     methods (Access=protected)
         [KT, F_int, NewHist] = computeTangentStiffnessAndForce(obj, u_elem)
     end
-    % function [Ke, Bm, Bb, Bs] = computeStiffnessMatrix(obj)
-    %     % ... (Insert the Stiffness Calculation logic from previous response) ...
-    %     % For brevity, assume this returns the 40x40 Ke matrix
-    %     % You must copy the full implementation here.
-    %      Ke = zeros(40,40);
-    %      % ... Logic ...
-    % end
-    %
-    % function Kg = computeGeometricStiffness(obj, u_elem)
-    %     % ... (Insert the Geometric Stiffness logic from previous response) ...
-    %     Kg = zeros(40,40);
-    % end
-    %
-    % function stresses = computeStresses(obj, u_elem)
-    %     % ... (Insert Stress Recovery logic from previous response) ...
-    %     stresses = struct('vonMises', [0;0;0], 'sigma_x', [0;0;0]);
-    % end
+
 end

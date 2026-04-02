@@ -114,7 +114,6 @@ Pre.addBC(edgeXL, 1, u_x_prescribed, 'Mem_disp');   % Ux = u_x at X=Lx
 % We want downward (-Z) loading, so magnitude = -q_pressure.
 allElems = (1:size(Pre.Mesh.Elements,1))';
 Pre.addPressureLoad(allElems, -q_pressure, 'Pressure');
-Pre.addBC(centreID,3,-0.01,'Disp_load');
 
 %% =========================================================
 %  4a.  ARC-LENGTH ANALYSIS  (Riks constraint)
@@ -144,7 +143,7 @@ S_arc1.activateBC('Mem_Uy');
 S_arc1.activateBC('Mem_disp');     % Ramps Ux to u_x_prescribed
 S_arc1.ConstraintType  = 'DispControl';
 S_arc1.ControlDOF      = (edgeXL(1) - 1)*6 + 1;   % Ux at first X=Lx node
-S_arc1.ArcLengthRadius = 0.5;
+S_arc1.ArcLengthRadius = 0.2;
 S_arc1.ArcLengthMin    = 0.05;
 S_arc1.ArcLengthMax    = 1.0;
 
@@ -157,15 +156,51 @@ S_arc2.activateBC('SS_Ry');
 S_arc2.activateBC('Mem_fixed');
 S_arc2.activateBC('Mem_Uy');
 % S_arc2.activateBC('Mem_disp');     % Hold membrane displacement fixed
-% S_arc2.activateLoad('Pressure');
-S_arc2.activateBC('Disp_load');
+S_arc2.activateLoad('Pressure');
 S_arc2.ConstraintType  = 'Riks';
-S_arc2.ArcLengthRadius = 0.04;
+S_arc2.ArcLengthRadius = 0.02;
 S_arc2.ArcLengthMin    = 5e-4;
 S_arc2.ArcLengthMax    = 0.2;
 
 SolArc.solve({S_arc2});
 
+%% =========================================================
+%  4b.  ADAPTIVE GNI ANALYSIS  (FEM_Solver_Adaptive)
+%       Stage 1: Membrane displacement ramp
+%       Stage 2: Pressure ramp (proportional loading)
+% ==========================================================
+fprintf('\n--- Analysis 2: Adaptive GNI Solver ---\n');
+
+opts_ada = SolverOptions();
+opts_ada.Tolerance     = 1e-4;
+opts_ada.MaxIterations = 20;
+opts_ada.InitialDt     = 0.1;
+opts_ada.MaxDt         = 0.5;
+opts_ada.MinDt         = 1e-3;
+opts_ada.MaxBisections = 5;
+
+SolAda = FEM_Solver_Adaptive(Pre, opts_ada);
+
+% Stage 1 — Membrane displacement (same BCs as arc-length Stage 1)
+S_ada1 = LoadingStage(1.0);
+S_ada1.activateBC('SS_w');
+S_ada1.activateBC('SS_Rx');
+S_ada1.activateBC('SS_Ry');
+S_ada1.activateBC('Mem_fixed');
+S_ada1.activateBC('Mem_Uy');
+S_ada1.activateBC('Mem_disp');
+
+% Stage 2 — Transverse pressure (proportional, adaptive time stepping)
+S_ada2 = LoadingStage(1.0);
+S_ada2.activateBC('SS_w');
+S_ada2.activateBC('SS_Rx');
+S_ada2.activateBC('SS_Ry');
+S_ada2.activateBC('Mem_fixed');
+S_ada2.activateBC('Mem_Uy');
+% S_ada2.activateBC('Mem_disp');
+S_ada2.activateLoad('Pressure');
+
+SolAda.solve({S_ada2});
 
 %% =========================================================
 %  5.  POST-PROCESSING
@@ -173,8 +208,22 @@ SolArc.solve({S_arc2});
 c_dof_w  = (centreID - 1)*6 + 3;   % Centre node DOF for w (Z)
 c_dof_ux = (centreID - 1)*6 + 1;   % Centre node DOF for Ux
 
-%% --- 5.2  Von Mises stress (top surface) ---
+%% --- 5.1  Final deformed shape (Adaptive GNI, end of Stage 2) ---
+PostAda = FEM_Postprocessor(Pre, SolAda);
 
+figure('Name','Final Deformed Shape — Adaptive GNI','Color','w','Position',[50 50 900 500]);
+opts_post.layer = 'Top';
+opts_post.scale = 20;   % Exaggeration factor for visualisation
+opts_post.Nummode = 1;
+PostAda.plotField('Displacement', opts_post);
+title(sprintf('Displacement magnitude — combined loading (scale ×%d)', opts_post.scale));
+colormap jet;
+
+%% --- 5.2  Von Mises stress (top surface) ---
+figure('Name','Von Mises — Top Surface','Color','w','Position',[100 100 900 500]);
+PostAda.plotField('VonMises', opts_post);
+title('Von Mises stress — top surface');
+colormap jet;
 
 %% --- 5.3  Load-displacement curves: centre deflection vs pressure factor ---
 figure('Name','Load–Displacement Curve','Color','w','Position',[150 150 800 500]);
@@ -196,6 +245,24 @@ if ~isempty(SolArc.U_Hist) && ~isempty(SolArc.LambdaHist)
     end
 end
 
+% Adaptive: extract Stage 2 steps (second half of U_Hist)
+if ~isempty(SolAda.U_Hist)
+    w_ada   = SolAda.U_Hist(c_dof_w, :);
+    % Reactions stored per stage in ReactionHist cell
+    % Use displacement history length as proxy; time axis from History_Time
+    n_ada = size(SolAda.U_Hist, 2);
+    t_ada = SolAda.History_Time(1:n_ada);
+    % Stage 2 time > 1.0 (Stage 1 runs 0..1, Stage 2 runs 1..2)
+    idx_s2 = t_ada > 1.0;
+    if any(idx_s2)
+        % Normalise time within stage 2 to [0,1] as proxy for lambda
+        t_s2 = t_ada(idx_s2) - 1.0;
+        plot(w_ada(idx_s2)*1000, t_s2, ...
+            'r--s', 'LineWidth', 2, 'MarkerSize', 5, ...
+            'DisplayName', sprintf('Adaptive GNI (%d steps)', sum(idx_s2)));
+    end
+end
+
 %% Navier analytical solution for reference (linear, no membrane prestress)
 % w_centre = (16*q*a^4)/(pi^6 * D) * sum_mn (1/(m^2+n^2)^2)
 % First term (m=n=1): w_centre ≈ 0.00406 * q * a^4 / D
@@ -211,15 +278,6 @@ ylabel('Pressure load factor \lambda (0 = zero, 1 = full q)', 'FontSize', 12);
 title('Plate centre deflection vs pressure load factor', 'FontSize', 13);
 legend('Location', 'northwest');
 
-% Prepare for post-processing of results
-% PostArc = FEM_Postprocessor(SolArc, Pre);
-% figure('Name','Von Mises — Top Surface','Color','w','Position',[100 100 900 500]);
-% opts_post.layer='Top';
-% opts_post.scale=0.1;
-% opts_post.Nummode=1;
-% PostArc.plotField('VonMises', opts_post);
-% title('Von Mises stress — top surface');
-% colormap jet;
 %% --- 5.4  Membrane + bending interaction: Ux at centre vs w ---
 figure('Name','Membrane–Bending Interaction','Color','w','Position',[200 200 800 450]);
 hold on; grid on; box on;
@@ -229,6 +287,12 @@ if ~isempty(SolArc.U_Hist)
     w_arc  = SolArc.U_Hist(c_dof_w,  :);
     plot(ux_arc*1000, w_arc*1000, 'b-o', 'LineWidth', 2, 'MarkerSize', 4, ...
         'DisplayName', 'Arc-length path');
+end
+if ~isempty(SolAda.U_Hist)
+    ux_ada = SolAda.U_Hist(c_dof_ux, :);
+    w_ada2 = SolAda.U_Hist(c_dof_w,  :);
+    plot(ux_ada*1000, w_ada2*1000, 'r--s', 'LineWidth', 2, 'MarkerSize', 5, ...
+        'DisplayName', 'Adaptive GNI path');
 end
 
 xlabel('Centre in-plane displacement u_x (mm)', 'FontSize', 12);
@@ -263,6 +327,18 @@ if ~isempty(SolArc.U_Hist)
     fprintf('  Final centre w:         %.3f mm\n', w_arc_final);
     fprintf('  Ratio to linear:        %.3f\n', w_arc_final / (w_navier_linear*1000));
 end
+
+if ~isempty(SolAda.U_Hist)
+    w_ada_final = SolAda.U_Hist(c_dof_w, end) * 1000;
+    fprintf('\nAdaptive GNI solver:\n');
+    fprintf('  Total converged steps:  %d\n', SolAda.StepCount);
+    fprintf('  Final centre w:         %.3f mm\n', w_ada_final);
+    fprintf('  Ratio to linear:        %.3f\n', w_ada_final / (w_navier_linear*1000));
+end
+
+fprintf('\nNote: w/t ratio = %.2f — large deflection effects are significant.\n', ...
+    abs(SolAda.U_Hist(c_dof_w, end)) / t);
+fprintf('============================================================\n');
 
 %% --- 5.7  Optional: App GUI (uncomment if GUI is available) ---
  PostAda.plotReactionDispCurve(centreID, 3);

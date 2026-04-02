@@ -2,9 +2,9 @@ classdef SolverOptions < handle
     properties
         % Newton-Raphson Settings
         Tolerance       = 1e-4;   % Convergence criteria (Force/Energy)
-        MaxIterations   = 15;     % Max Newton iters before bisection
-        numLoadSteps    = 10;     % For standard NL solver
-        maxIter         = 15;     % Legacy alias for MaxIterations
+        MaxIterations   = 20;     % Max Newton iters before bisection
+        numLoadSteps    = 30;     % For standard NL solver
+        maxIter         = 20;     % Legacy alias for MaxIterations
         tol             = 1e-4;   % Legacy alias for Tolerance
         linesearch      = false;  % Legacy alias for UseLineSearch
         

@@ -78,10 +78,10 @@ Sol.solve({S1});
 %%
 % 7. Post
 Post = FEM_Postprocessor(Pre, Sol);
-opts.layer='Top';
-opts.scale=50;
-opts.Nummode=1;
-Post.plotField('Displacement', opts);
+optsout.layer='Top';
+optsout.scale=50;
+optsout.Nummode=1;
+Post.plotField('Displacement', optsout);
 title('I-Beam Bending under Pressure');
 
 % for ii=1:10
@@ -93,17 +93,18 @@ title('I-Beam Bending under Pressure');
 colormap jet;
 %% 
 % 5. Post-Process
-Post = FEM_Postprocessor(Pre, Sol);
+% Post = FEM_Postprocessor(Pre, Sol);
 
 % A. Plot Curve
-% Plot Displacement of a tip node (e.g., center of tip)
-% midTip = tipNodes(round(end/2));
-% Post.plotLoadDisplacement(web0(1), 3); % Z-disp
-opts.layer='Top';
-opts.scale=10;
-opts.Nummode=1;
-Post.plotField('Displacement', opts);
-title('I-Beam Bending under Pressure');
-% B. Animate
-% Scale = 1.0 %(True scale to see real rotation)
-Post.animateScenario(crosL(1), 1, 1, 0.5);
+% % Plot Displacement of a tip node (e.g., center of tip)
+n=numel(crosL);
+midTip = crosL(ceil(n/2));
+Post.plotLoadDisplacement(midTip, 3); % Z-disp
+% opts.layer='Top';
+% opts.scale=10;
+% opts.Nummode=1;
+% Post.plotField('Displacement', opts);
+% title('I-Beam Bending under Pressure');
+% % B. Animate
+% % Scale = 1.0 %(True scale to see real rotation)
+% Post.animateScenario(crosL(1), 1, 1, 0.5);
