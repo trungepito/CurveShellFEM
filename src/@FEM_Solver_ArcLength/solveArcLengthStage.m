@@ -38,7 +38,12 @@ arc_min      = Stage.ArcLengthMin;
 arc_max      = Stage.ArcLengthMax;
 arc_psi      = Stage.ArcLengthPsi; % Load-scaling factor
 max_trials   = 5;
+obj.ConstraintType = obj.canonicalConstraintType(obj.ConstraintType);
 usePredictor = any(strcmp(obj.ConstraintType, {'Riks', 'Spherical'}));
+if strcmp(obj.ConstraintType, 'DispControl') && isempty(obj.ControlDOF)
+    error('FEM_Solver_ArcLength:noControlDOF', ...
+        'Set ControlDOF before using DispControl constraint.');
+end
 
 obj.ArcLengthPsi = arc_psi; % Sync to solver instance for constraint calls
 
@@ -95,10 +100,9 @@ switch obj.ConstraintType
         constraintFn = @(u,l,u0,l0,dup,dlp,si) ...
             obj.dispControlConstraint(u,l,u0,l0,dup,dlp,si);
     otherwise
-        warning('FEM_Solver_ArcLength:unknownConstraint', ...
-            'Unknown ConstraintType ''%s''; defaulting to Riks.', obj.ConstraintType);
-        constraintFn = @(u,l,u0,l0,dup,dlp,si) ...
-            obj.crisfieldConstraint(u,l,u0,l0,dup,dlp,si);
+        % Should be unreachable because canonicalConstraintType validates.
+        error('FEM_Solver_ArcLength:unknownConstraintType', ...
+            'Unsupported ConstraintType ''%s''.', obj.ConstraintType);
 end
 
 % ------------------------------------------------------------------

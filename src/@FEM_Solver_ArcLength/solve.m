@@ -38,7 +38,7 @@ for s = 1 : length(StageList)
     % isprop guards against plain structs being passed instead of
     % LoadingStage objects.
     if isprop(Stage, 'ConstraintType') && ~isempty(Stage.ConstraintType)
-        obj.ConstraintType = Stage.ConstraintType;
+        obj.ConstraintType = obj.canonicalConstraintType(Stage.ConstraintType);
     end
     if isprop(Stage, 'ControlDOF') && ~isempty(Stage.ControlDOF)
         obj.ControlDOF = Stage.ControlDOF;

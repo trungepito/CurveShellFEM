@@ -262,5 +262,34 @@ classdef TestArcLengthSolver < matlab.unittest.TestCase
             testCase.verifyEqual(Sol.ConstraintType, 'Spherical', ...
                 'Stage must route through Spherical constraint.');
         end
+
+        function testConstraintAliasNormalization(testCase)
+            Sol = testCase.Sol;
+            testCase.verifyEqual(Sol.canonicalConstraintType('load'), 'LoadControl');
+            testCase.verifyEqual(Sol.canonicalConstraintType('displacement control'), 'DispControl');
+            testCase.verifyEqual(Sol.canonicalConstraintType('riks'), 'Riks');
+            testCase.verifyEqual(Sol.canonicalConstraintType('Spherical'), 'Spherical');
+        end
+
+        function testConstraintAliasAppliedFromStage(testCase)
+            Sol = testCase.Sol;
+            S1 = LoadingStage(1.0);
+            S1.ConstraintType = 'load';  % alias for LoadControl
+            S1.activateBC('Support');
+            S1.ArcLengthRadius = 0.1;
+            S1.ArcLengthMin    = 1e-4;
+            S1.ArcLengthMax    = 0.5;
+            try
+                Sol.solve({S1});
+            catch
+            end
+            testCase.verifyEqual(Sol.ConstraintType, 'LoadControl');
+        end
+
+        function testInvalidConstraintTypeThrows(testCase)
+            Sol = testCase.Sol;
+            testCase.verifyError(@() Sol.canonicalConstraintType('NotAConstraint'), ...
+                'FEM_Solver_ArcLength:unknownConstraintType');
+        end
     end
 end

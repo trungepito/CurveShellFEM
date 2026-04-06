@@ -83,6 +83,30 @@ classdef FEM_Solver_ArcLength < FEM_Solver_Adaptive
     % solve loop.
     % ====================================================================
     methods
+        function constraintType = canonicalConstraintType(obj, constraintTypeIn)
+            % CANONICALCONSTRAINTTYPE  Normalize user/stage constraint labels.
+            %
+            % Accepts common aliases and returns canonical solver labels:
+            %   Riks | Spherical | LoadControl | DispControl
+            if isempty(constraintTypeIn)
+                constraintType = obj.ConstraintType;
+                return;
+            end
+            key = lower(strrep(char(constraintTypeIn), ' ', ''));
+            switch key
+                case 'riks'
+                    constraintType = 'Riks';
+                case 'spherical'
+                    constraintType = 'Spherical';
+                case {'loadcontrol', 'load', 'forcecontrol'}
+                    constraintType = 'LoadControl';
+                case {'dispcontrol', 'displacementcontrol', 'displacement'}
+                    constraintType = 'DispControl';
+                otherwise
+                    error('FEM_Solver_ArcLength:unknownConstraintType', ...
+                        'Unsupported ConstraintType ''%s''.', constraintTypeIn);
+            end
+        end
 
         function [g, h, s] = crisfieldConstraint(obj, u, lambda, ...
                 u0, lambda0, dup, dlp, arc_length)
