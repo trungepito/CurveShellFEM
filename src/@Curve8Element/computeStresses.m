@@ -1,5 +1,6 @@
 %% ---------------------------------------------------------
 %  NEW METHOD: Calculate Stress and Strain at Element Center
+%  Deprecated!!!!
 %  ---------------------------------------------------------
 function results = computeStresses(obj, u_elem)
 % u_elem: 40x1 vector of element displacements
