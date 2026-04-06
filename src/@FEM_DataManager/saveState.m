@@ -3,10 +3,5 @@ function saveState(obj, Pre, Sol, options)
 
 fprintf('[DataMgr] Saving project "%s" to %s...\n', ...
     obj.ProjectName, obj.OutputFolder);
-
-if strcmp(obj.Format, 'MAT')
-    obj.saveToMAT(Pre, Sol, options);
-else
-    obj.saveToCSV(Pre, Sol, options);
-end
+obj.saveSnapshot(Pre, Sol, options);
 end

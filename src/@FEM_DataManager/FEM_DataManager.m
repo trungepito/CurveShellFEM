@@ -21,13 +21,18 @@ classdef FEM_DataManager < handle
         end
     end
     methods
+        initProject(obj, Pre, Sol, options)
+        saveSnapshot(obj, Pre, Sol, options)
+        [Pre, Sol] = loadSnapshot(obj, mode, key)
+        points = listRestartPoints(obj)
         saveState(obj, Pre, Sol, options)
         [Pre, Sol] = loadState(obj)
     end
 
     methods (Access = private)
+        root = getProjectRoot(obj)
         saveToMAT(obj, Pre, Sol, opt)
-        exportToCSV(obj, Pre, Sol, opt)
+        saveToCSV(obj, Pre, Sol, opt)
     end
 
 

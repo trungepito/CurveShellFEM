@@ -1,0 +1,26 @@
+function points = listRestartPoints(obj)
+%LISTRESTARTPOINTS Enumerate known restart anchors.
+
+points = struct('id', {}, 'mode', {}, 'path', {}, 'exists', {});
+root = obj.getProjectRoot();
+
+metaFile = fullfile(root, 'project_meta.json');
+chkFile = fullfile(root, 'checkpoint.mat');
+legacyFile = fullfile(obj.OutputFolder, [obj.ProjectName '_FullState.mat']);
+
+if exist(metaFile, 'file')
+    points(end+1) = struct( ...
+        'id', 'project-latest', ...
+        'mode', 'project', ...
+        'path', chkFile, ...
+        'exists', exist(chkFile, 'file') == 2); %#ok<AGROW>
+end
+
+if exist(legacyFile, 'file')
+    points(end+1) = struct( ...
+        'id', 'legacy-fullstate', ...
+        'mode', 'project', ...
+        'path', legacyFile, ...
+        'exists', true); %#ok<AGROW>
+end
+end
