@@ -33,6 +33,14 @@ end
 U = obj.getDisplacementAtStep(stepIdx);
 
 % ---------------------------------------------------------------
+% Optional persisted constitutive history source (Phase 4)
+% ---------------------------------------------------------------
+storedHist = [];
+if obj.UseStoredGPHistory && ~isempty(stepIdx) && stepIdx > 0
+    storedHist = loadHistoryFromFile(obj, stepIdx);
+end
+
+% ---------------------------------------------------------------
 % Plastic-element history: for history-consistent recovery we need
 % the HistoryData that was committed at stepIdx, not the current one
 % (which reflects the latest converged step).
@@ -52,7 +60,7 @@ catch
     currentStep=9999;
 end
 
-if ~isempty(stepIdx) && stepIdx > 0 && stepIdx < currentStep
+if ~isempty(stepIdx) && stepIdx > 0 && stepIdx < currentStep && isempty(storedHist)
     warning('FEM_Postprocessor:staleHistory', ...
         ['Requesting step %d but current step is %d. ' ...
          'Plastic stress recovery uses elastic re-integration ' ...
@@ -75,7 +83,22 @@ for e = 1:nElems
 
     elObj = obj.Solver.Elements{e};
 
-    if useHistoryData
+    if ~isempty(storedHist)
+        savedHist = [];
+        hasLocalHistory = isprop(elObj, 'HistoryData');
+        if hasLocalHistory
+            savedHist = elObj.HistoryData;
+            if e <= numel(storedHist)
+                elObj.HistoryData = storedHist{e};
+            else
+                elObj.HistoryData = [];
+            end
+        end
+        gpCell{e} = elObj.recoverGaussPointData(u_el);
+        if hasLocalHistory
+            elObj.HistoryData = savedHist;
+        end
+    elseif useHistoryData
         % Normal path: let recoverGaussPointData decide plastic vs elastic
         gpCell{e} = elObj.recoverGaussPointData(u_el);
     else
@@ -92,4 +115,19 @@ end
 % ---------------------------------------------------------------
 obj.CachedStep = stepIdx;
 obj.CachedGP   = gpCell;
+end
+
+function histCell = loadHistoryFromFile(obj, stepIdx)
+%LOADHISTORYFROMFILE Loads history_step_k from configured gp_history.mat.
+histCell = [];
+if isempty(obj.GPHistoryFile) || ~exist(obj.GPHistoryFile, 'file')
+    return;
+end
+varName = sprintf('history_step_%d', stepIdx);
+vars = who('-file', obj.GPHistoryFile);
+if ~any(strcmp(vars, varName))
+    return;
+end
+data = load(obj.GPHistoryFile, varName);
+histCell = data.(varName);
 end

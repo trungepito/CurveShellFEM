@@ -46,10 +46,12 @@ classdef FEM_Postprocessor_v2 < handle
         % on the same step.
         CachedStep  = -1
         CachedGP    = {}   % cell[nElems x 1] of gpData struct arrays
+        GPHistoryFile = ''
+        UseStoredGPHistory = false
     end
 
     methods
-        function obj = FEM_Postprocessor_v2(model, solver)
+        function obj = FEM_Postprocessor_v2(model, solver, gpHistoryFile)
             % FEM_POSTPROCESSOR  Construct a postprocessor.
             %
             % Usage:
@@ -62,6 +64,9 @@ classdef FEM_Postprocessor_v2 < handle
             else
                 obj.Model  = model;
                 obj.Solver = solver;
+            end
+            if nargin >= 3 && ~isempty(gpHistoryFile)
+                obj.setHistorySource(gpHistoryFile);
             end
         end
     end
@@ -76,6 +81,7 @@ classdef FEM_Postprocessor_v2 < handle
         plotPlasticYield(obj, stepIdx)
         animateHistory(obj, nodeID, dofIdx)
         plotReactionDispCurve(obj, reactionHist, dispNodeID, dispDOF, stageIdx)
+        setHistorySource(obj, gpHistoryFile)
     end
 
     % ====================================================================
