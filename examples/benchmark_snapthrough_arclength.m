@@ -69,6 +69,9 @@ function results = benchmark_snapthrough_arclength()
     % ===== SOLVE WITH ARC-LENGTH =====
     fprintf('\n--- SOLVING WITH ARC-LENGTH (Riks) ---\n');
     Sol_Arc = FEM_Solver_ArcLength(Pre, Opt);
+    DM = FEM_DataManager('benchmark_snapthrough_arclength', 'Results', 'MAT');
+    DM.initProject(Pre, Sol_Arc, struct());
+    DM.attachToSolver(Sol_Arc, 1);
     Sol_Arc.solve({Stage_Arc});
     
     elapsed_time_arc = toc;
