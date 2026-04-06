@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADR) Index
 
-**Last updated**: 2026-03-31
+**Last updated**: 2026-04-06
 **Maintained by**: Project Scribe, Lead Architect
 **Governance System**: v4.1 (Deployed 2026-03-31)
 
@@ -23,6 +23,7 @@ These 5 ADRs capture the foundational architectural patterns that span the entir
 | ADR-003 | Modified Riks / Hyperplane Constraint | Accepted | 11–18 (retroactive) | 2026-03-31 | [ADR-003-Modified-Riks-Hyperplane-Constraint.md](ADR-003-Modified-Riks-Hyperplane-Constraint.md) |
 | ADR-004 | Integration Scheme — 2×2 Gauss × 5 Simpson | Accepted | 8–14 (retroactive) | 2026-03-31 | [ADR-004-Integration-Scheme-2x2x5.md](ADR-004-Integration-Scheme-2x2x5.md) |
 | ADR-005 | Double-Precision Arithmetic; Double-Stored Connectivity | Accepted | 3–24 (retroactive) | 2026-03-31 | [ADR-005-Double-Arithmetic-Int32-Connectivity.md](ADR-005-Double-Arithmetic-Int32-Connectivity.md) |
+| ADR-006 | Data Persistence and Restart Architecture (Stage-Aware Snapshots) | Proposed | 29 | 2026-04-06 | [ADR-006-Data-Persistence-and-Restart-Architecture.md](ADR-006-Data-Persistence-and-Restart-Architecture.md) |
 
 ---
 
