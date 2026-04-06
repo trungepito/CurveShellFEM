@@ -46,6 +46,9 @@ function results = benchmark_complex_path_multilimit()
     
     fprintf('\n--- SOLVER EXECUTION ---\n');
     Sol = FEM_Solver_ArcLength(Pre, opts);
+    DM = FEM_DataManager('benchmark_complex_path_multilimit', 'Results', 'MAT');
+    DM.initProject(Pre, Sol, struct());
+    DM.attachToSolver(Sol, 1);
     Stage = LoadingStage(1.0);
     Stage.activateBC('Support');
     Stage.activateLoad('CenterLoad');

@@ -4,6 +4,9 @@ classdef FEM_DataManager < handle
         OutputFolder    % String: Directory to save to
         Format          % 'MAT' (Binary) or 'CSV' (Text)
     end
+    properties (Access = private)
+        ListenerHandles = {}
+    end
 
     methods
         function obj = FEM_DataManager(name, folder, format)
@@ -23,6 +26,9 @@ classdef FEM_DataManager < handle
     methods
         initProject(obj, Pre, Sol, options)
         saveSnapshot(obj, Pre, Sol, options)
+        appendStep(obj, stageId, stepPayload)
+        onStepConverged(obj, src, evt, stageId)
+        attachToSolver(obj, Sol, stageId)
         [Pre, Sol] = loadSnapshot(obj, mode, key)
         points = listRestartPoints(obj)
         saveState(obj, Pre, Sol, options)
