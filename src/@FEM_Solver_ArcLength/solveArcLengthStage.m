@@ -38,7 +38,7 @@ arc_min      = Stage.ArcLengthMin;
 arc_max      = Stage.ArcLengthMax;
 arc_psi      = Stage.ArcLengthPsi; % Load-scaling factor
 max_trials   = 5;
-usePredictor = strcmp(obj.ConstraintType, 'Riks');
+usePredictor = any(strcmp(obj.ConstraintType, {'Riks', 'Spherical'}));
 
 obj.ArcLengthPsi = arc_psi; % Sync to solver instance for constraint calls
 
@@ -85,6 +85,9 @@ switch obj.ConstraintType
     case 'Riks'
         constraintFn = @(u,l,u0,l0,dup,dlp,si) ...
             obj.crisfieldConstraint(u,l,u0,l0,dup,dlp,si);
+    case 'Spherical'
+        constraintFn = @(u,l,u0,l0,dup,dlp,si) ...
+            obj.sphericalConstraint(u,l,u0,l0,dup,dlp,si);
     case 'LoadControl'
         constraintFn = @(u,l,u0,l0,dup,dlp,si) ...
             obj.loadControlConstraint(u,l,u0,l0,dup,dlp,si);

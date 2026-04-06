@@ -3,8 +3,8 @@ classdef FEM_Solver_ArcLength < FEM_Solver_Adaptive
 %
 % Inherits from FEM_Solver_Adaptive for stage-based solving and event
 % notifications. Implements the Crisfield (1981) generalised arc-length
-% algorithm with three constraint families: Modified Riks (Hyperplane),
-% load control, and displacement control.
+% algorithm with four constraint families: Modified Riks (Hyperplane),
+% spherical arc-length, load control, and displacement control.
 %
 % Each constraint returns the scalar constraint function g, its gradient h
 % with respect to displacements, and its gradient s with respect to the
@@ -33,7 +33,7 @@ classdef FEM_Solver_ArcLength < FEM_Solver_Adaptive
 
     properties
         % Constraint selection ---
-        ConstraintType = 'Riks'  % 'Riks' | 'LoadControl' | 'DispControl'
+        ConstraintType = 'Riks'  % 'Riks' | 'Spherical' | 'LoadControl' | 'DispControl'
         ControlDOF     = []      % Scalar DOF index required for DispControl
 
         % Per-step output history ---
@@ -124,6 +124,20 @@ classdef FEM_Solver_ArcLength < FEM_Solver_Adaptive
             g = lambda - lambda_target;
             h = zeros(length(u), 1);   % dg/du = 0 everywhere
             s = 1;                     % dg/dlambda = 1
+        end
+
+        function [g, h, s] = sphericalConstraint(obj, u, lambda, ...
+                u0, lambda0, dup, dlp, arc_length)
+            % SPHERICALCONSTRAINT  Crisfield spherical arc-length constraint.
+            %
+            %   g = ||u-u0||^2 + psi^2*(lambda-lambda0)^2 - ds^2 = 0
+            %
+            % where ds is arc_length and psi is ArcLengthPsi.
+            du = u - u0;
+            dl = lambda - lambda0;
+            g  = du' * du + obj.ArcLengthPsi^2 * dl^2 - arc_length^2;
+            h  = 2 * du;
+            s  = 2 * obj.ArcLengthPsi^2 * dl;
         end
 
         function [g, h, s] = dispControlConstraint(obj, u, lambda, ...
