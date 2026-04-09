@@ -1,6 +1,8 @@
 *.asv
 *.log
 *.tmp
+*.zip
+*.rar
 tmp/
 .DS_Store
 *.mexw64

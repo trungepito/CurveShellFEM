@@ -73,7 +73,7 @@ while obj.Time < t_end
         S_Reaction(:,nStep)=reaction;
         % 3. TRIGGER EVENT (The Listener approach)
         % Create the packet of data
-        evtData = SolverEventData(obj.Time, obj.StepCount, obj.U, 1.0, 5);
+        evtData = SolverEventData(obj.Time, obj.StepCount, obj.U, alpha, iters);
 
         % Shout it out!
         notify(obj, 'StepConverged', evtData);
