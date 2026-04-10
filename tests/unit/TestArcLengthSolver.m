@@ -104,6 +104,26 @@ classdef TestArcLengthSolver < matlab.unittest.TestCase
                 'g must equal overshoot distance');
         end
 
+        function testSphericalConstraint_onRadius(testCase)
+            Sol = testCase.Sol;
+            n   = testCase.nDofs;
+            u0  = zeros(n,1);
+            l0  = 0.0;
+            ds  = 0.02;
+
+            u = u0;
+            u(3) = ds;   % purely displacement-based point on the sphere
+            l = l0;
+
+            [g, h, s] = Sol.sphericalConstraint(u, l, u0, l0, zeros(n,1), 0, ds);
+            testCase.verifyEqual(g, 0, 'AbsTol', 1e-12, ...
+                'Spherical g must be zero on the radius.');
+            testCase.verifyEqual(h(3), 2*ds, 'AbsTol', 1e-12, ...
+                'h must be 2*(u-u0).');
+            testCase.verifyEqual(s, 0, 'AbsTol', 1e-14, ...
+                's must be zero when lambda=lambda0.');
+        end
+
         function testDispControlConstraint_values(testCase)
             Sol = testCase.Sol;
             n   = testCase.nDofs;
@@ -223,6 +243,53 @@ classdef TestArcLengthSolver < matlab.unittest.TestCase
 
             testCase.verifyEqual(Sol.ConstraintType, 'LoadControl', ...
                 'Stage ConstraintType must override instance default');
+        end
+
+        function testConstraintTypeSphericalStage(testCase)
+            Sol = testCase.Sol;
+            S1 = LoadingStage(1.0);
+            S1.ConstraintType = 'Spherical';
+            S1.activateBC('Support');
+            S1.ArcLengthRadius = 0.1;
+            S1.ArcLengthMin    = 1e-4;
+            S1.ArcLengthMax    = 0.5;
+
+            try
+                Sol.solve({S1});
+            catch
+            end
+
+            testCase.verifyEqual(Sol.ConstraintType, 'Spherical', ...
+                'Stage must route through Spherical constraint.');
+        end
+
+        function testConstraintAliasNormalization(testCase)
+            Sol = testCase.Sol;
+            testCase.verifyEqual(Sol.canonicalConstraintType('load'), 'LoadControl');
+            testCase.verifyEqual(Sol.canonicalConstraintType('displacement control'), 'DispControl');
+            testCase.verifyEqual(Sol.canonicalConstraintType('riks'), 'Riks');
+            testCase.verifyEqual(Sol.canonicalConstraintType('Spherical'), 'Spherical');
+        end
+
+        function testConstraintAliasAppliedFromStage(testCase)
+            Sol = testCase.Sol;
+            S1 = LoadingStage(1.0);
+            S1.ConstraintType = 'load';  % alias for LoadControl
+            S1.activateBC('Support');
+            S1.ArcLengthRadius = 0.1;
+            S1.ArcLengthMin    = 1e-4;
+            S1.ArcLengthMax    = 0.5;
+            try
+                Sol.solve({S1});
+            catch
+            end
+            testCase.verifyEqual(Sol.ConstraintType, 'LoadControl');
+        end
+
+        function testInvalidConstraintTypeThrows(testCase)
+            Sol = testCase.Sol;
+            testCase.verifyError(@() Sol.canonicalConstraintType('NotAConstraint'), ...
+                'FEM_Solver_ArcLength:unknownConstraintType');
         end
     end
 end

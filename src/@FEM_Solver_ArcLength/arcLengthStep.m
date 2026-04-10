@@ -4,10 +4,13 @@ function [u, lambda, F_int, TrialHist, converged, iters] = arcLengthStep(obj, ..
         arc_length, usePredictor, tol, maxit)
 % ARCLENGHTSTEP  One arc-length predictor-corrector increment.
 %
-% v3.0: Standardized implementation.
+% v3.6: Solve-validation path with shared corrector linear solve.
 % - Residual convention: R = F_int - lambda * F_ext
 % - Single-threaded CPU assembly via funcHandle triplets.
 % - Performance: Returns F_int/TrialHist from final iteration; NO redundant assembly.
+% - Robustness: validates reduced linear solves using finite checks and
+%   relative residual thresholds (works for sparse/direct backslash path).
+% - Performance: corrector solves both RHS vectors in one linear solve.
 
 % Initialise at the beginning of the step
 u      = u0;
@@ -30,11 +33,11 @@ dlp = 0;
 
 if usePredictor
     KT_ff = KT(free_dofs, free_dofs);
-    if condest(KT_ff) < 1e-14
+    [ok_pred, dup_f] = solveReducedSystem(KT_ff, fext(free_dofs));
+    if ~ok_pred
         converged = false; iters = 0; return;
     end
 
-    dup_f = KT_ff \ fext(free_dofs);
     dup(free_dofs) = dup_f;
 
     % CSP sign flip detection
@@ -73,15 +76,17 @@ for i = 1 : maxit
     fext_f = fext(free_dofs);
     h_f    = h(free_dofs);
 
-    if condest(KT_ff) < 1e-14
+    rhs = [fext_f, -R_f];
+    [ok_lin, DU] = solveReducedSystem(KT_ff, rhs);
+    if ~ok_lin
         converged = false; return;
     end
 
     % Solve for increment: du = dl * du_I + du_II
     % du_I  = Response to tangent Load fext
     % du_II = Response to residual -R (where R = F_int - lambda*F_ext)
-    du_I_f  =  KT_ff \ fext_f;
-    du_II_f = -KT_ff \ R_f;
+    du_I_f  = DU(:,1);
+    du_II_f = DU(:,2);
 
     denom = s + h_f' * du_I_f;
     if abs(denom) < 1e-14 * max(abs(s), 1)
@@ -108,5 +113,27 @@ for i = 1 : maxit
         break;
     end
 end
+
+end
+
+% -------------------------------------------------------------------------
+function [ok, X] = solveReducedSystem(KT_ff, B)
+% SOLVEREDUCEDSYSTEM  Solve KT_ff * X = B with numerical sanity checks.
+%
+% We avoid explicit condition-number estimates here because they are noisy
+% and expensive in nonlinear loops. Instead, we validate the solve result:
+%   1) all entries finite
+%   2) relative residual below tolerance
+
+X = KT_ff \ B;
+
+if any(~isfinite(X(:)))
+    ok = false;
+    return;
+end
+
+res = KT_ff * X - B;
+rel_res = norm(res, 'fro') / max(norm(B, 'fro'), 1.0);
+ok = isfinite(rel_res) && (rel_res <= 1e-8);
 
 end
