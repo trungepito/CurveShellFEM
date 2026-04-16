@@ -30,7 +30,7 @@ dlp = 0;
 
 if usePredictor
     KT_ff = KT(free_dofs, free_dofs);
-    if condest(KT_ff) < 1e-14
+    if rcond(KT_ff) < 1e-13
         converged = false; iters = 0; return;
     end
 
@@ -73,7 +73,7 @@ for i = 1 : maxit
     fext_f = fext(free_dofs);
     h_f    = h(free_dofs);
 
-    if condest(KT_ff) < 1e-14
+    if rcond(KT_ff) < 1e-13
         converged = false; return;
     end
 

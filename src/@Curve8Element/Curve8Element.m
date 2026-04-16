@@ -47,8 +47,9 @@ classdef Curve8Element
         stresses = computeStresses(obj, u_elem)
         [Bm,Bb,detJ]=formBmb(obj,xi,eta)
         [Bs,detJ]=formBs(obj,xi,eta)
-        [detJ, dNd_local, theta, N] = calculateKinematics(obj, xi, eta)
+                [detJ, dNd_local, theta, N] = calculateKinematics(obj, xi, eta)
         T_hybrid=Trans_T(obj)
+        fe = computeGlobalForceONLY(obj, u_elem)
         function p = per_5_blkdiag(obj)
             p = blkdiag(obj.per_5, obj.per_5, obj.per_5, obj.per_5, ...
                         obj.per_5, obj.per_5, obj.per_5, obj.per_5);

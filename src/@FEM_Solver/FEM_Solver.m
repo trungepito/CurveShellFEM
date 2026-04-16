@@ -38,6 +38,7 @@ classdef FEM_Solver < handle
         solveStatic(obj)
         solveBuckling(obj, numModes)
         solveStaticDisplacement(obj)
+        tf = hasMaterialPlastic(obj)
     end
 
     methods(Access = protected)
@@ -47,7 +48,7 @@ classdef FEM_Solver < handle
         F_int = assembleinternalforceONLY(obj, U_trial)
     end
     
-    methods(Access = private)
+    methods (Access = public)
         assembleK(obj)
         assembleKg(obj)
     end

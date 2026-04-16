@@ -13,12 +13,21 @@ classdef FEM_Postprocessor < handle
     properties
         Model   % Preprocessor Reference
         Solver  % Solver Reference
+        v2delegate % New internal v2 equivalent
     end
 
     methods
         function obj = FEM_Postprocessor(preObj, solvObj)
-            obj.Model = preObj;
+            warning('FEM_Postprocessor:deprecated', ...
+                ['FEM_Postprocessor v1 is deprecated. ' ...
+                 'Migrate to FEM_Postprocessor_v2. ' ...
+                 'v1 will be removed in the next major version.']);
+            obj.Model  = preObj;
             obj.Solver = solvObj;
+            % Build internal v2 delegate if solver has new state
+            if isprop(solvObj, 'state') && ~isempty(solvObj.state)
+                obj.v2delegate = FEM_Postprocessor_v2(preObj, solvObj.state.snapshot());
+            end
         end
     end
     

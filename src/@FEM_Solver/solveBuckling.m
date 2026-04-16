@@ -19,16 +19,32 @@ end
 fprintf('[Solver] Assembling Geometric Stiffness (Kg)...\n');
 obj.assembleKg();
 
-% Partition to free DOFs (remove prescribed rows/cols)
+% Reuse FreeDofs from solveStatic if available to ensure dimension consistency
 nDofs = size(obj.Model.Mesh.Nodes, 1) * 6;
-fixed_dofs = [];
-if ~isempty(obj.Model.BCs)
-    fixed_dofs = unique((obj.Model.BCs.Node - 1) * 6 + obj.Model.BCs.DOF);
+if isprop(obj, 'FreeDofs') && ~isempty(obj.FreeDofs)
+    free_dofs = obj.FreeDofs;
+    fixed_dofs = setdiff(1:nDofs, free_dofs)';
+else
+    fixed_dofs = [];
+    if ~isempty(obj.Model.BCs)
+        if istable(obj.Model.BCs)
+            fixed_dofs = unique((obj.Model.BCs.Node - 1) * 6 + obj.Model.BCs.DOF);
+        else
+            fixed_dofs = unique(([obj.Model.BCs.Node] - 1) * 6 + [obj.Model.BCs.DOF]);
+        end
+    end
+    free_dofs = setdiff(1:nDofs, fixed_dofs)';
 end
-free_dofs = setdiff(1:nDofs, fixed_dofs)';
 
 K_red  = obj.GlobalK(free_dofs,  free_dofs);
 Kg_red = obj.GlobalKg(free_dofs, free_dofs);
+
+% Dimension Safety Check (A5 Unified Architecture)
+if size(K_red,1) ~= size(Kg_red,1)
+    error('FEM_Solver:sizeMismatch', ...
+        'Dimension mismatch in Buckling: K_red(%dx%d) vs Kg_red(%dx%d). FreeDOFs: %d', ...
+        size(K_red,1), size(K_red,2), size(Kg_red,1), size(Kg_red,2), length(free_dofs));
+end
 
 % Enforce symmetry (eliminate numerical asymmetry from assembly)
 K_red  = 0.5 * (K_red  + K_red');
@@ -52,7 +68,7 @@ obj.ModeShapes      = d_du_free_full(nDofs, numModes, real(V), free_dofs, fixed_
 
 % Shout out!!!
 evtData=SolverLinearEventData(obj.ModeShapes,lambda_phys);
-notify(obj, 'Lin_sol ', evtData);
+notify(obj, 'Lin_sol', evtData);
 
 fprintf('[Solver] Critical Load Factors: ');
 fprintf('%.4e  ', obj.BucklingFactors(1:min(3, end)));

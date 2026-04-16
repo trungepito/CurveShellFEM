@@ -52,9 +52,28 @@ while obj.Time < t_end
         % Commit State
         obj.U = U_trial;
         U_converged = U_trial; % Update backup
-        [~, ~, TrialHist] = obj.assembleTangentSystem(U_trial);
-        obj.commitHistory(TrialHist);   % ← ADD THIS
+        % NOTE: commitHistory is already called inside newtonLoop on convergence.
+        % Do NOT call assembleTangentSystem or commitHistory again here —
+        % doing so would double-advance the plastic state (BUG-X1 fix).
         obj.Time = target_time;
+
+        % C4: Archive plastic GP state for this step
+        plasticSnap = [];
+        if obj.hasMaterialPlastic()
+            nElems = size(obj.Model.Mesh.Elements, 1);
+            plasticSnap = cell(nElems, 1);
+            for e = 1:nElems
+                if isprop(obj.Elements{e}, 'HistoryData')
+                    plasticSnap{e} = obj.Elements{e}.HistoryData;
+                end
+            end
+        end
+        % Re-assemble F_int at converged state to get correct reaction
+        % (since newtonLoop returns reaction from the trial state)
+        reaction_struct = struct('dofs', fixed_dofs, 'values', reaction);
+        if isprop(obj, 'state') && ~isempty(obj.state)
+            obj.state.appendStep(U_converged, 0, plasticSnap, reaction_struct, 0);
+        end
 
         % Store History
         obj.StepCount = obj.StepCount + 1;

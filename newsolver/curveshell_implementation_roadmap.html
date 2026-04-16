@@ -1,0 +1,136 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.phase{margin-bottom:20px}
+.phase-header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--border-radius-md);margin-bottom:10px;cursor:pointer;user-select:none;border:0.5px solid var(--color-border-tertiary)}
+.phase-header:hover{background:var(--color-background-secondary)}
+.phase-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.phase-title{font-weight:500;font-size:15px;color:var(--color-text-primary);flex:1}
+.phase-meta{font-size:12px;color:var(--color-text-secondary)}
+.phase-badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.tasks{display:grid;gap:8px;padding-left:20px}
+.task{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 14px;cursor:pointer;transition:border-color 0.15s}
+.task:hover{border-color:var(--color-border-secondary)}
+.task.done{opacity:0.55}
+.task-top{display:flex;align-items:flex-start;gap:8px}
+.task-id{font-size:11px;font-weight:500;padding:2px 7px;border-radius:20px;flex-shrink:0;margin-top:1px}
+.task-name{font-size:13px;font-weight:500;color:var(--color-text-primary);flex:1}
+.task-type{font-size:11px;color:var(--color-text-tertiary);flex-shrink:0;margin-top:2px}
+.task-detail{margin-top:6px;padding-left:0;display:none}
+.task.open .task-detail{display:block}
+.task-detail p{font-size:12px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:4px}
+.task-detail code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+.dep{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;background:var(--color-background-secondary);color:var(--color-text-secondary);margin-right:3px;margin-top:4px;border:0.5px solid var(--color-border-tertiary)}
+.tag-critical{background:#FCEBEB;color:#791F1F}
+.tag-arch{background:#EEEDFE;color:#3C3489}
+.tag-infra{background:#E1F5EE;color:#085041}
+.tag-test{background:#FAEEDA;color:#633806}
+.tag-cleanup{background:#F1EFE8;color:#444441}
+.progress-bar{height:4px;background:var(--color-background-secondary);border-radius:2px;margin:4px 0 10px;overflow:hidden}
+.progress-fill{height:4px;border-radius:2px}
+.summary-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.summary-pill{font-size:12px;padding:4px 10px;border-radius:20px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+</style>
+
+<h2 class="sr-only">CurveShellFEM solver pipeline implementation roadmap — five phases from hotfixes to full architectural redesign</h2>
+
+<div class="summary-row">
+<span class="summary-pill">20 tasks total</span>
+<span class="summary-pill" style="background:#FCEBEB;color:#791F1F;border-color:#F7C1C1">5 critical fixes</span>
+<span class="summary-pill" style="background:#EEEDFE;color:#3C3489;border-color:#CECBF6">8 architectural</span>
+<span class="summary-pill" style="background:#E1F5EE;color:#085041;border-color:#9FE1CB">4 infrastructure</span>
+<span class="summary-pill" style="background:#FAEEDA;color:#633806;border-color:#FAC775">3 test / verify</span>
+</div>
+
+<div id="roadmap"></div>
+
+<script>
+const phases=[
+{id:'P0',label:'Phase 0',title:'Hotfixes — ship now, no design change',weeks:'~1 week',color:'#E24B4A',dotColor:'#E24B4A',tasks:[
+{id:'H1',name:'Fix linesearch obj.U mutation',type:'critical',detail:'In linesearch.m: replace `obj.U = U_old + eta*dU` with `return eta` and let the caller apply it. linesearch must NEVER write to obj.U directly — it is a pure utility, not a state mutator.',deps:[],files:['src/@FEM_Solver_Nonlinear/linesearch.m','src/@FEM_Solver_Nonlinear/newtonLoop.m']},
+{id:'H2',name:'Fix recoverNodalSmooth solver mutation',type:'critical',detail:'In recoverNodalSmooth.m line ~270: `obj.Solver.U = u` — remove this. Pass u as a parameter to evaluatePoint instead. The postprocessor must never write to the solver.',deps:[],files:['src/@FEM_Postprocessor/recoverNodalSmooth.m']},
+{id:'H3',name:'Fix newtonLoop diverge path returns U0',type:'critical',detail:'On the diverge path newtonLoop returns the last NR-iterated U_curr. It must return the entry state U0 so adaptive step bisection restarts from a known-good position. Also: do NOT call commitHistory on diverge.',deps:[],files:['src/@FEM_Solver_Nonlinear/newtonLoop.m']},
+{id:'H4',name:'Fix condest singularity check direction',type:'critical',detail:'condest() returns the condition number, not the determinant. A singular matrix → condest → Inf, not < 1e-14. Replace `condest(KT_ff) < 1e-14` with `rcond(KT_ff) < 1e-13` in arcLengthStep.m.',deps:[],files:['src/@FEM_Solver_ArcLength/arcLengthStep.m']},
+{id:'H5',name:'Fix DataManager loadState missing class',type:'critical',detail:'FEM_Solver_Plastic does not exist. Replace reconstruction with FEM_Solver_Adaptive + pre.setMaterialPlastic(). Check for GlobalHistory field; if present, rebuild the Adaptive solver and re-wire material object from saved MatData.',deps:[],files:['src/@FEM_DataManager/loadState.m']},
+]},
+{id:'P1',label:'Phase 1',title:'Infrastructure — new value objects, no behaviour change',weeks:'1–2 weeks',color:'#1D9E75',dotColor:'#1D9E75',tasks:[
+{id:'I1',name:'Extract Assembler as static-method class',type:'infra',detail:'Create src/@Assembler/Assembler.m with four static methods: elastic(Elements,SctrMap,nDofs), geometric(U,Elements,SctrMap,nDofs), tangent(U,Elements,SctrMap,nDofs), internalForce(U,Elements,SctrMap,nDofs). Wire FEM_Solver.assembleK to call Assembler.elastic. All existing tests must still pass.',deps:['H1','H3'],files:['src/@Assembler/']},
+{id:'I2',name:'Introduce SolverOptions canonical names',type:'infra',detail:'Remove tol, maxIter, linesearch aliases from SolverOptions. Grep all solvers for uses of the old names and replace with Tolerance, MaxIterations, UseLineSearch. This is a one-hour find-and-replace — do it before any architectural work so no new code uses the bad names.',deps:[],files:['src/@SolverOptions/SolverOptions.m','src/@FEM_Solver_Nonlinear/*.m','src/@FEM_Solver_ArcLength/*.m']},
+{id:'I3',name:'Introduce SolutionState handle class',type:'infra',detail:'Create SolutionState with appendStep(U,lambda,plasticSnap,reaction,ds) and snapshot(). Properties: U_Hist, LambdaHist, PlasticHistoryArchive{step}{elem}, ReactionHist, ArcLengthHistory, ModeShapes, BucklingFactors. Wire FEM_Solver_Adaptive.solveStage to call state.appendStep instead of direct property writes.',deps:['I1'],files:['src/@SolutionState/']},
+{id:'I4',name:'Introduce SolutionSnapshot value object',type:'infra',detail:'SolutionSnapshot is a plain struct (not handle) returned by SolutionState.snapshot(). It holds read-only copies of all arrays. FEM_Postprocessor_v2 constructor accepts SolutionSnapshot instead of a live solver. This seals the mutation boundary permanently.',deps:['I3'],files:['src/@SolutionSnapshot/','src/@FEM_Postprocessor_v2/FEM_Postprocessor_v2.m']},
+]},
+{id:'P2',label:'Phase 2',title:'Core correctness — NR loop and convergence',weeks:'1–2 weeks',color:'#534AB7',dotColor:'#534AB7',tasks:[
+{id:'C1',name:'Implement ConvergenceMonitor class',type:'arch',detail:'Properties: Tolerance, MaxIterations, NormType (force|energy|displacement), History (residual per iter). Methods: check(R,dU,F_ext,iter) returns bool. Energy norm: dU·R < tol * dU_0·R_0. Force norm: ||R(free)||/||F_ext(free)||. The monitor object is passed into newtonLoop as an argument, not embedded.',deps:['I2'],files:['src/@ConvergenceMonitor/']},
+{id:'C2',name:'Rewrite newtonLoop with ConvergenceMonitor',type:'arch',detail:'Accept ConvergenceMonitor as argument. On entry: save U0. On diverge: return U0 (not U_curr), set converged=false, discard TrialHist. On converge: call state.appendStep, return U_conv. Remove inline tol check, delegate to monitor.check(). Add energy norm path.',deps:['C1','I1','I3'],files:['src/@FEM_Solver_Nonlinear/newtonLoop.m']},
+{id:'C3',name:'Fix linesearch return contract',type:'arch',detail:'Rewrite linesearch to return scalar eta (not apply U update). Signature: eta = linesearch(R_free, dU_free, KT_ff, F_int_fn). The caller does U_curr(free) += eta * dU_free. No obj.U assignment anywhere inside linesearch.',deps:['H1','C2'],files:['src/@FEM_Solver_Nonlinear/linesearch.m']},
+{id:'C4',name:'Implement PlasticHistoryArchive in SolutionState',type:'arch',detail:'After each converged step in solveStage and solveArcLengthStage: snap = cell(nElems,1); for e=1:nElems, snap{e} = obj.Elements{e}.HistoryData; end; state.appendStep(U,lambda,snap,...). FEM_Postprocessor_v2.recoverAllGaussPoints reads Archive{stepIdx}{e} for past steps instead of live element state.',deps:['I3','C2'],files:['src/@SolutionState/SolutionState.m','src/@FEM_Postprocessor_v2/recoverAllGaussPoints.m']},
+]},
+{id:'P3',label:'Phase 3',title:'Arc-length and strategy pattern',weeks:'2–3 weeks',color:'#D85A30',dotColor:'#D85A30',tasks:[
+{id:'A1',name:'Introduce IncrementalStrategy interface',type:'arch',detail:'Abstract base class with two abstract methods: [g,h,s]=constraint(u,lambda,u0,lambda0,dup,dlp,ds) and [u1,l1,dup,dlp]=predictor(KT_ff,F_ext_f,u0,l0,dup_prev,ds,free_dofs). Three concrete subclasses: RiksStrategy, LoadControlStrategy, DispControlStrategy. Remove ConstraintType string switch from solver entirely.',deps:['C1'],files:['src/@IncrementalStrategy/','src/@RiksStrategy/','src/@LoadControlStrategy/','src/@DispControlStrategy/']},
+{id:'A2',name:'Rewrite arcLengthStep with strategy object',type:'arch',detail:'Signature: [u,lambda,F_int,TH,ok,iters] = arcLengthStep(strategy,assembler,state,free_dofs,u0,l0,dup_prev,ds,tol,maxit). No string switch. predictor = strategy.predictor(...). constraint = strategy.constraint(...). Reuse KT factorisation for both du_I and du_II solves in the corrector loop.',deps:['A1','I1'],files:['src/@FEM_Solver_ArcLength/arcLengthStep.m']},
+{id:'A3',name:'Fix arc-length stage termination',type:'arch',detail:'Replace nSteps=ceil(Duration/ds) fixed-count loop with a while-loop terminating on a physical criterion: total accumulated arc length >= Stage.Duration, or lambda >= Stage.TargetLambda (user-configurable). Add a max-steps safety ceiling of ceil(10*Duration/ds_min) to prevent infinite loops on snap-back.',deps:['A2'],files:['src/@FEM_Solver_ArcLength/solveArcLengthStage.m']},
+{id:'A4',name:'Update LoadingStage to carry strategy ref',type:'arch',detail:'Replace ConstraintType string + ControlDOF with strategy = RiksStrategy(...) property. Keep backwards compatibility: if ConstraintType string is found, auto-construct the matching strategy object with a deprecation warning. Update all example scripts.',deps:['A1'],files:['src/@LoadingStage/LoadingStage.m','examples/']},
+{id:'A5',name:'Merge Adaptive + ArcLength under unified NL solver',type:'arch',detail:'FEM_Solver_Nonlinear becomes the single stage-aware NL solver. It holds an IncrementalStrategy and delegates each increment to strategy.predictor + newtonLoop-with-constraint. FEM_Solver_Adaptive and FEM_Solver_ArcLength become thin subclasses (or are deprecated). The 4-deep inheritance chain collapses to 2.',deps:['A3','A4','C2'],files:['src/@FEM_Solver_Nonlinear/','src/@FEM_Solver_Adaptive/','src/@FEM_Solver_ArcLength/']},
+]},
+{id:'P4',label:'Phase 4',title:'Verification, cleanup, and docs',weeks:'1–2 weeks',color:'#888780',dotColor:'#888780',tasks:[
+{id:'V1',name:'Extend test_postprocessor_v2 to cover plastic replay',type:'test',detail:'Add T9: build a 4-element plastic model, run 5 arc-length steps past yield, then call recoverField(von_mises, stepIdx=2) and verify result matches sigma from PlasticHistoryArchive{2}. Previously this would give elastic re-integration instead. This is the regression test for C4.',deps:['C4','I4'],files:['examples/test_postprocessor_v2.m']},
+{id:'V2',name:'Patch test: linear + buckling + NL snap-through',type:'test',detail:'Run the 3 canonical benchmarks end-to-end with the new pipeline: (1) patch test for linear correctness, (2) Euler column buckling eigenvalue against analytical, (3) Williams toggle frame snap-through with arc-length. All must produce results within 1% of reference. Gate every merge on these.',deps:['A5','V1'],files:['tests/']},
+{id:'V3',name:'Deprecate FEM_Postprocessor v1 with hard redirect',type:'cleanup',detail:'Add to FEM_Postprocessor constructor: warning(\"FEM_Postprocessor v1 is deprecated. Migrate to FEM_Postprocessor_v2\"). Internally delegate all method calls to an FEM_Postprocessor_v2 instance built from the same solver. Update FEM_Postprocessor_App to use v2 pipeline directly.',deps:['I4'],files:['src/@FEM_Postprocessor/FEM_Postprocessor.m','src/FEM_Postprocessor_App.m']},
+]},
+];
+
+function tagClass(type){
+return{critical:'tag-critical',arch:'tag-arch',infra:'tag-infra',test:'tag-test',cleanup:'tag-cleanup'}[type]||'tag-cleanup';
+}
+function tagLabel(type){
+return{critical:'critical fix',arch:'architectural',infra:'infrastructure',test:'test / verify',cleanup:'cleanup'}[type]||type;
+}
+
+const root=document.getElementById('roadmap');
+phases.forEach(ph=>{
+const div=document.createElement('div');
+div.className='phase';
+const totalT=ph.tasks.length;
+const pct=0;
+
+div.innerHTML=`
+<div class="phase-header" onclick="togglePhase('${ph.id}')">
+  <div class="phase-dot" style="background:${ph.dotColor}"></div>
+  <span class="phase-title">${ph.label} — ${ph.title}</span>
+  <span class="phase-meta">${ph.weeks}</span>
+  <span class="phase-meta" style="margin-left:8px">${totalT} tasks</span>
+</div>
+<div class="progress-bar" id="pb-${ph.id}"><div class="progress-fill" style="width:0%;background:${ph.color}"></div></div>
+<div class="tasks" id="tasks-${ph.id}">
+${ph.tasks.map(t=>`
+<div class="task" id="task-${t.id}" onclick="toggleTask('${t.id}')">
+  <div class="task-top">
+    <span class="task-id ${tagClass(t.type)}">${t.id}</span>
+    <span class="task-name">${t.name}</span>
+    <span class="task-type">${tagLabel(t.type)}</span>
+  </div>
+  <div class="task-detail">
+    <p>${t.detail}</p>
+    ${t.deps.length?`<div style="margin-top:6px">${t.deps.map(d=>`<span class="dep">needs ${d}</span>`).join('')}</div>`:''}
+    ${t.files?`<div style="margin-top:5px">${t.files.map(f=>`<code>${f}</code>`).join(' ')}</div>`:''}
+  </div>
+</div>`).join('')}
+</div>`;
+root.appendChild(div);
+});
+
+function togglePhase(id){
+const el=document.getElementById('tasks-'+id);
+el.style.display=el.style.display==='none'?'grid':'none';
+}
+function toggleTask(id){
+const el=document.getElementById('task-'+id);
+el.classList.toggle('open');
+}
+
+document.querySelectorAll('.phase-header').forEach(h=>{
+const tasksDiv=h.nextElementSibling.nextElementSibling;
+tasksDiv.style.display='grid';
+});
+</script>

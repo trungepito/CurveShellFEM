@@ -14,14 +14,29 @@ Pre = FEM_Preprocessor(matData.E, matData.nu, matData.t);
 Pre.Mesh = data.Mesh;
 Pre.BCs  = data.BCs;
 Pre.Loads = data.Loads;
-if isfield(data,'GlobalHistory') && ~isempty(data.GlobalHistory)
-    MatObj = Material_J2Plastic(matData.E, matData.nu, ...
-        matData.Yield, matData.H);
-    Sol = FEM_Solver_Plastic(Pre, MatObj);
-    Sol.GlobalHistory = data.GlobalHistory;
+
+% Reconstruct solver — FEM_Solver_Plastic does not exist; plastic analysis
+% uses FEM_Solver_Adaptive with a J2Plastic material on the preprocessor.
+if isfield(data, 'GlobalHistory') && ~isempty(data.GlobalHistory)
+    % Rewire plastic material onto the preprocessor
+    if isfield(matData, 'Yield') && isfield(matData, 'H')
+        Pre.setMaterialPlastic(matData.Yield, matData.H);
+    end
+    Sol = FEM_Solver_Adaptive(Pre, SolverOptions());
+    % Restore plastic GP history to element cache
+    if isprop(Sol, 'Elements') && ~isempty(Sol.Elements)
+        nElems = length(Sol.Elements);
+        for e = 1:nElems
+            if isprop(Sol.Elements{e}, 'HistoryData') && ...
+               e <= length(data.GlobalHistory)
+                Sol.Elements{e}.HistoryData = data.GlobalHistory{e};
+            end
+        end
+    end
 else
     Sol = FEM_Solver(Pre);
 end
+
 Sol.U = data.U;
 if isfield(data,'BucklingFactors'), Sol.BucklingFactors = data.BucklingFactors; end
 if isfield(data,'LambdaHist'),      Sol.LambdaHist      = data.LambdaHist;      end

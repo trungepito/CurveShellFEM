@@ -34,35 +34,10 @@ U = obj.getDisplacementAtStep(stepIdx);
 
 % ---------------------------------------------------------------
 % Plastic-element history: for history-consistent recovery we need
-% the HistoryData that was committed at stepIdx, not the current one
-% (which reflects the latest converged step).
-%
-% Strategy:
-%   - If stepIdx == current step (or 0/[]), Elements{e}.HistoryData is
-%     already correct.
-%   - If stepIdx < current step, we cannot recover past plastic state
-%     without a history store.  We fall back to elastic re-integration
-%     with the historic U, which is still kinematically consistent even
-%     if the stress will be elastic.  A warning is issued once.
+% the HistoryData that was committed at stepIdx, not the current one.
 % ---------------------------------------------------------------
-nElems    = size(obj.Model.Mesh.Elements, 1);
-try
-    currentStep = obj.Solver.StepCount;
-catch
-    currentStep=9999;
-end
-
-if ~isempty(stepIdx) && stepIdx > 0 && stepIdx < currentStep
-    warning('FEM_Postprocessor:staleHistory', ...
-        ['Requesting step %d but current step is %d. ' ...
-         'Plastic stress recovery uses elastic re-integration ' ...
-         'because past HistoryData is not stored per step. ' ...
-         'Kinematic fields (displacement, strain) are exact.'], ...
-        stepIdx, currentStep);
-    useHistoryData = false;
-else
-    useHistoryData = true;
-end
+nElems = size(obj.Model.Mesh.Elements, 1);
+hasState = isprop(obj.Solver, 'state') && ~isempty(obj.Solver.state);
 
 % ---------------------------------------------------------------
 % Main loop
@@ -72,18 +47,27 @@ gpCell = cell(nElems, 1);
 for e = 1:nElems
     sctr  = obj.Solver.SctrMap(e, :);   % 48 global DOF indices
     u_el  = U(sctr);                    % 48x1 element DOF vector
-
     elObj = obj.Solver.Elements{e};
+    
+    archiveFound = false;
+    if ~isempty(stepIdx) && stepIdx > 0 && hasState
+        if stepIdx <= obj.Solver.state.StepCount && ...
+           length(obj.Solver.state.PlasticHistoryArchive) >= stepIdx && ...
+           ~isempty(obj.Solver.state.PlasticHistoryArchive{stepIdx})
+           
+           % Use archived plastic state
+            savedHD = elObj.HistoryData;
+            elObj.HistoryData = obj.Solver.state.PlasticHistoryArchive{stepIdx}{e};
+            gpCell{e} = elObj.recoverGaussPointData(u_el);
+            elObj.HistoryData = savedHD;
+            archiveFound = true;
+        end
+    end
 
-    if useHistoryData
-        % Normal path: let recoverGaussPointData decide plastic vs elastic
+    if ~archiveFound
+        % Fallback for current step (live recovery) or missing archive
+        % recoverGaussPointData will use live HistoryData if present.
         gpCell{e} = elObj.recoverGaussPointData(u_el);
-    else
-        % Historic step: temporarily blank HistoryData to force elastic path
-        savedHist              = elObj.HistoryData;
-        elObj.HistoryData      = [];
-        gpCell{e}              = elObj.recoverGaussPointData(u_el);
-        elObj.HistoryData      = savedHist;  % restore
     end
 end
 

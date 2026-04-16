@@ -1,18 +1,12 @@
 function solve(obj, StageList)
-% StageList: Cell array of LoadingStage objects
+% SOLVE  Deprecated — use FEM_Solver_Nonlinear.solve() directly.
+%
+% This wrapper exists for backward compatibility. FEM_Solver_Adaptive
+% will be removed in v4. Migrate to FEM_Solver_Nonlinear.
 
-fprintf('--- Starting Nonlinear Analysis (Adaptive) ---\n');
-obj.History_Load=zeros(length(StageList),1);
-% Loop through each defined stage (Load -> Unload -> Etc)
-for s = 1:length(StageList)
-    currentStage = StageList{s};
-    fprintf('>>> Entering Stage %d:\n', s);
-    
-    success = obj.solveStage(currentStage, s);
-    
-    obj.U_Hist = obj.U_Hist(:, 1:obj.StepCount);
-    obj.History_Time = obj.History_Time(1:obj.StepCount);
+warning('FEM_Solver_Adaptive:deprecated', ...
+    'Use FEM_Solver_Nonlinear.solve() directly. FEM_Solver_Adaptive will be removed in v4.');
 
-end
-fprintf('--- Analysis Completed Successfully ---\n');
+% Delegate to unified solve on FEM_Solver_Nonlinear
+solve@FEM_Solver_Nonlinear(obj, StageList);
 end

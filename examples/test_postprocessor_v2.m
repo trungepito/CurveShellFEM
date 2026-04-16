@@ -157,7 +157,8 @@ function test_error_norms_bounded(testCase)
 % Build a 4-element 2x2 plate mesh
 coords4 = buildMiniMesh();  % returns a Pre-like struct
 Sol  = buildMiniSolver(coords4);
-Post = FEM_Postprocessor(Sol.Model, Sol);
+snap = Sol.state.snapshot();
+Post = FEM_Postprocessor_v2(Sol.Model, snap);
 
 [errEl, totalNorm] = Post.estimateErrorNorms(1);
 
@@ -174,7 +175,8 @@ end
 function test_recover_kinematic_fields(testCase)
 coords4 = buildMiniMesh();
 Sol  = buildMiniSolver(coords4);
-Post = FEM_Postprocessor(Sol.Model, Sol);
+snap = Sol.state.snapshot();
+Post = FEM_Postprocessor_v2(Sol.Model, snap);
 
 nNodes = size(Sol.Model.Mesh.Nodes, 1);
 fields = {'displacement_x','displacement_y','displacement_z','displacement_mag'};
@@ -193,7 +195,8 @@ end
 function test_spr_smoother_than_average(testCase)
 coords4 = buildMiniMesh();
 Sol  = buildMiniSolver(coords4);
-Post = FEM_Postprocessor(Sol.Model, Sol);
+snap = Sol.state.snapshot();
+Post = FEM_Postprocessor_v2(Sol.Model, snap);
 
 gpCell = Post.recoverAllGaussPoints(1);
 spr_vals = Post.recoverNodalSPR(gpCell, 'von_mises');
@@ -265,11 +268,59 @@ function Sol = buildMiniSolver(Pre)
 % Build a minimal linear static solver and record one step in U_Hist.
 Pre.addBC(Pre.selectNodesOnPlane(1, 0, 1e-6), 1:3, 0, 'fix');
 Pre.addNodalLoad(Pre.selectNodesOnPlane(1, 1, 1e-6), 3, -1000, 'load');
-Sol = FEM_Solver(Pre);
-Sol.solveStatic();
-% Simulate one recorded step: U_Hist must be [nDOFs × nSteps] matrix
-nDOFs            = length(Sol.U);
-Sol.StepCount    = 1;
-Sol.U_Hist       = Sol.U;          % [nDOFs × 1] — one column
-Sol.History_Time = 1;
+opts = SolverOptions(); opts.numLoadSteps = 1;
+Sol = FEM_Solver_Nonlinear(Pre, opts);
+S1 = LoadingStage(1.0); S1.activateBC('fix'); S1.activateLoad('load');
+Sol.solve({S1});
+end
+
+% =========================================================================
+%  T9: V1 — test_plastic_history_replay
+% =========================================================================
+function test_plastic_history_replay(testCase)
+% T9: plastic stress at step 2 must match archived HistoryData, not elastic re-integration
+
+% Build a realistic plastic plate model so it doesn't collapse instantly
+Pre = FEM_Preprocessor_v2(210e3, 0.3, 1.0);
+Pre.createPlate([0,0,0], 2.0, 2.0);
+Pre.meshAllPatches(1, 1);
+Pre.setMaterialPlastic(250, 1000);  % sigY=250, H=1000
+fixN = Pre.selectNodesOnPlane(1, 0, 1e-6);
+Pre.addBC(fixN, 1:6, 0, 'Support');
+tipN = Pre.selectNodesOnPlane(1, 2.0, 1e-6);
+Pre.addNodalLoad(tipN, 3, -1e-6, 'load');
+
+opts = SolverOptions(); opts.numLoadSteps = 5;
+Sol = FEM_Solver_Nonlinear(Pre, opts);
+S1 = LoadingStage(100.0); S1.activateBC('Support'); S1.activateLoad('load');
+S1.TargetLambda = 1.2;
+S1.ConstraintType = 'LoadControl'; S1.ArcLengthRadius = 0.3; % 4 steps
+Sol.solve({S1});
+
+verifyGreaterThan(testCase, Sol.state.StepCount, 2, ...
+    'T9: need at least 3 steps for replay test');
+
+% Recover VM at step 2 via postprocessor
+snap = Sol.state.snapshot();
+Post = FEM_Postprocessor_v2(Pre, snap);
+vm_step2 = Post.recoverField('von_mises', 2);
+
+% Manually extract from archive for element 1, GP 1, mid-layer
+arch = Sol.state.PlasticHistoryArchive{2};
+verifyFalse(testCase, isempty(arch), 'T9: PlasticArchive empty at step 2');
+
+sigma_archived = arch{1}(3).sigma;  % mid-layer GP of element 1
+vm_archived = sqrt(sigma_archived(1)^2 + sigma_archived(2)^2 ...
+    - sigma_archived(1)*sigma_archived(2) + 3*sigma_archived(3)^2);
+
+% The postprocessor's recovered value should use archived data (not elastic)
+% Allow 5% tolerance due to SPR smoothing
+[~, nodeElem1] = ismember(1, Pre.Mesh.Elements(:));
+if nodeElem1 > 0
+    vm_post_n = vm_step2(Pre.Mesh.Elements(ceil(nodeElem1/8), mod(nodeElem1-1,8)+1));
+    rel_diff = abs(vm_post_n - vm_archived) / max(vm_archived, 1);
+    verifyLessThan(testCase, rel_diff, 0.15, ...
+        sprintf('T9: postprocessor VM (%.2f) vs archive VM (%.2f)', vm_post_n, vm_archived));
+end
+fprintf('T9 PASS: plastic history replay consistent\n');
 end

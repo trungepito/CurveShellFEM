@@ -1,24 +1,14 @@
 classdef FEM_Solver_Adaptive < FEM_Solver_Nonlinear
-
-    properties
-        F_ext_start       % external for at start of each stage!
-        ReactionHist
-        History_Load      % Number of steps taken
-    end
+% FEM_SOLVER_ADAPTIVE (Deprecated) 
+%
+% Use FEM_Solver_Nonlinear instead. This class is maintained for backward 
+% compatibility and automatically uses the unified strategy-driven solver.
 
     methods
         function obj = FEM_Solver_Adaptive(preObj, Options)
+            if nargin < 2, Options = SolverOptions(); end
             obj@FEM_Solver_Nonlinear(preObj, Options);
-            nDofs = length(obj.U);
-            obj.F_ext_start = zeros(nDofs, 1);
+            warning('FEM_Solver_Adaptive is deprecated. Migrate to FEM_Solver_Nonlinear.');
         end
     end
-    
-    methods
-        solve(obj, StageList)
-    end
-
-    methods (Access = protected)
-        success = solveStage(obj, Stage, s)
-    end
-end
+end

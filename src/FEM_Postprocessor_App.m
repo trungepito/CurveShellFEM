@@ -55,9 +55,16 @@ classdef FEM_Postprocessor_App < handle
                 error('FEM_Postprocessor_App:InvalidInput', 'Must provide an initialized FEM_Postprocessor object.');
             end
             
-            obj.Post = postObj;
-            obj.Solver = postObj.Solver;
-            obj.Model = postObj.Model;
+            if isa(postObj, 'FEM_Postprocessor_v2')
+                obj.Post = postObj;
+            elseif isa(postObj, 'FEM_Postprocessor') && ~isempty(postObj.v2delegate)
+                obj.Post = postObj.v2delegate;
+            else
+                obj.Post = postObj;  % fallback to v1
+            end
+            
+            obj.Solver = obj.Post.Solver;
+            obj.Model = obj.Post.Model;
             
             % Integrity Check
             if isempty(obj.Model.Mesh.Nodes) || isempty(obj.Model.Mesh.Elements)

@@ -1,0 +1,101 @@
+classdef SolverOptions < handle
+% SOLVEROPTIONS  Unified configuration for all CurveShellFEM nonlinear solvers.
+%
+% All E1-E6 enhancement flags default to the pre-enhancement behaviour so
+% existing scripts run unmodified.  Enable enhancements one at a time via:
+%
+%   opts = SolverOptions();
+%   opts.UseLineSearch  = true;   % E2
+%   opts.UseQuasiNewton = true;   % E3
+%   opts.PredictorType  = 'auto'; % E5
+%
+% See also: FEM_Solver_Nonlinear, FEM_Solver_ArcLength, ConvergenceMonitor
+
+    properties
+        % ----------------------------------------------------------------
+        % EXISTING — unchanged, kept for backward compatibility
+        % ----------------------------------------------------------------
+        MaxIterations    = 20;
+        numLoadSteps     = 30;
+        EnablePlotting   = false;
+
+        % Adaptive stepping
+        InitialDt        = 0.1;
+        MinDt            = 1e-3;
+        MaxDt            = 1.0;
+        MaxBisections    = 5;
+
+        % ----------------------------------------------------------------
+        % E1 — Mixed convergence criteria
+        % Three independent tolerances must ALL be satisfied.
+        % Tolerance/tol/maxIter/linesearch kept as legacy aliases.
+        % ----------------------------------------------------------------
+        TolForce         = 1e-4;    % ||R_free|| / ||F_ext_free||
+        TolDisp          = 1e-3;    % ||dU_free|| / max(||U_free||, DispFloor)
+        TolEnergy        = 1e-7;    % |dU'*R| / E_ref  (E_ref fixed at iter 1)
+        DispFloor        = 1e-12;   % prevents /0 when U=0 at start of loading
+        EnergyFloor      = 1e-20;   % prevents /0 on very first iteration
+
+        % ----------------------------------------------------------------
+        % E2 — Armijo backtracking line search
+        % ----------------------------------------------------------------
+        UseLineSearch    = false;
+        MaxLineIter      = 8;
+        ArmijoC1         = 1e-4;    % sufficient-decrease constant
+
+        % ----------------------------------------------------------------
+        % E3 — L-BFGS quasi-Newton
+        % ----------------------------------------------------------------
+        UseQuasiNewton   = false;
+        LBFGSHistory     = 6;       % number of (s,y) pairs retained
+        LBFGSCurvEps     = 1e-10;   % minimum y'*s to accept a pair
+        ResetOnPlastic   = true;    % reset history when new yield occurs
+
+        % ----------------------------------------------------------------
+        % E4 — Curvature-aware arc-length radius adaptation
+        % ----------------------------------------------------------------
+        DesiredIters     = 4;       % target Newton iterations per step (Ramm)
+        ArcCurvatureWt   = 0.4;     % blend weight of Bergan curvature factor
+
+        % ----------------------------------------------------------------
+        % E5 — Predictor strategy
+        % ----------------------------------------------------------------
+        PredictorType    = 'tangent';  % 'tangent' | 'secant' | 'auto'
+        CondLimit        = 1e10;       % condition-number switch for 'auto'
+
+        % ----------------------------------------------------------------
+        % E6 — Convergence monitor
+        % ----------------------------------------------------------------
+        StagnationWindow = 4;       % iterations over which to test stagnation
+        DivergenceRatio  = 1e3;     % ||R_i||/||R_0|| threshold for abort
+    end
+
+    % --------------------------------------------------------------------
+    % Legacy alias properties — kept for backward compatibility
+    % --------------------------------------------------------------------
+    properties (Dependent)
+        Tolerance   % alias for TolForce
+        tol         % alias for TolForce
+        maxIter     % alias for MaxIterations
+        linesearch  % alias for UseLineSearch
+    end
+
+    methods
+        % --- Tolerance / tol ---
+        function v = get.Tolerance(obj),  v = obj.TolForce; end
+        function set.Tolerance(obj, v)
+            obj.TolForce  = v;
+            obj.TolEnergy = v * 1e-3;   % keep energy tol one decade tighter
+        end
+        function v = get.tol(obj),        v = obj.TolForce; end
+        function set.tol(obj, v),         obj.TolForce = v; end
+
+        % --- maxIter ---
+        function v = get.maxIter(obj),    v = obj.MaxIterations; end
+        function set.maxIter(obj, v),     obj.MaxIterations = v; end
+
+        % --- linesearch ---
+        function v = get.linesearch(obj), v = obj.UseLineSearch; end
+        function set.linesearch(obj, v),  obj.UseLineSearch = v; end
+    end
+end
