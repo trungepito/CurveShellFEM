@@ -1,5 +1,5 @@
 function success = solveIncrementalStage(obj, Stage, strategy, s)
-% SOLVEINCREMENTALSTAGE  Strategy-driven arc-length stage driver.
+% SOLVEINCREMENTALSTAGE  Strategy-driven incremental stage driver.
 %
 % Replaces solveArcLengthStage by delegating predictor/constraint logic
 % to the IncrementalStrategy object. Uses while-loop termination (A3)
@@ -17,6 +17,14 @@ opts  = obj.Options;
 tol   = opts.Tolerance;
 maxit = opts.MaxIterations;
 max_trials = 5;
+
+if Stage.Duration <= 0
+    warning('solveIncrementalStage:nonPositiveDuration', ...
+        'Stage %d has non-positive duration (%.3e); skipping.', s, Stage.Duration);
+    obj.History_Load(s) = 0;
+    success = true;
+    return;
+end
 
 % Initialize monitor
 mon = ConvergenceMonitor();
@@ -287,7 +295,7 @@ while accumulated < Stage.Duration && stepCount < maxSteps
     % This handles U_Hist, LambdaHist, ArcLengthHist, and Reaction data internally
     obj.state.appendStep(u_converged, lambda, plasticSnap, reaction_struct, trial_ds);
 
-    % Event notification
+    % Event notification (after appendStep so StepCount is current)
     evtData = SolverEventData(obj.Time + accumulated, ...
         obj.StepCount, u_converged, lambda, iters_used);
     notify(obj, 'StepConverged', evtData);
@@ -297,21 +305,11 @@ end
 % 6. Finalize Stage
 % ------------------------------------------------------------------
 obj.Time = obj.Time + Stage.Duration;
+obj.History_Load(s) = stage_step;
 if isprop(obj, 'F_ext_start')
     obj.F_ext_start = F_ext_total;
 end
 
 success = true;
 fprintf('    Stage %d: %d steps converged.  λ_final = %.4f\n', s, stage_step, lambda);
-end
-
-% ------------------------------------------------------------------
-% LOCAL HELPERS
-% ------------------------------------------------------------------
-function [R, KT, fext_curr, TrialHist] = assembleForArcLength(obj, u_trial, lambda_trial)
-    % ASSEMBLEFORARCLENGTH - Helper for unified residual/tangent evaluation
-    F_ext_total = obj.F_ext_start + (obj.Model.GlobalF - obj.F_ext_start);
-    [KT, F_int, TrialHist] = obj.assembleTangentSystem(u_trial);
-    fext_curr = lambda_trial * F_ext_total;
-    R = F_int - fext_curr;
 end
