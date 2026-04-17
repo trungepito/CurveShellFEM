@@ -34,7 +34,7 @@ classdef FEM_DataManager < handle
 %   % Restart after crash
 %   [Pre2, Sol2] = DM.restartFromCheckpoint(2);
 %
-% See also: FEM_Solver_ArcLength, FEM_Solver_Adaptive, FEM_Postprocessor_v2
+% See also: FEM_Solver_Nonlinear, FEM_Postprocessor_v2
 
     % ====================================================================
     properties
@@ -123,8 +123,11 @@ classdef FEM_DataManager < handle
     % ====================================================================
     % PRIVATE: EVENT HANDLER
     % ====================================================================
+    methods (Access = public)
+        onStepConverged_(obj, evt, stageIdx)
+    end
+    
     methods (Access = private)
-        onStepConverged_(obj, evt, stageIdx, Sol)
         onLinear_solu(obj,evt,Sol)
     end
     % ====================================================================

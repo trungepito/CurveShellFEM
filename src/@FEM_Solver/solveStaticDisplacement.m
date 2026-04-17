@@ -40,9 +40,6 @@ U_calc = obj.GlobalK(free_dofs, free_dofs) \ F_effective;
 U_full(free_dofs) = U_calc;
 
 obj.U = U_full;
-% Event shout out!!!
-evtData=SolverLinearEventData(obj.U);
-notify(obj, 'Lin_sol ', evtData);
 
 fprintf('[Solver] Static Solution Complete.\n');
 end

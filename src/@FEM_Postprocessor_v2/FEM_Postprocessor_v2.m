@@ -38,7 +38,11 @@ classdef FEM_Postprocessor_v2 < handle
 
     properties (SetAccess = private)
         Model       % FEM_Preprocessor_v2 handle
-        Solver      % FEM_Solver (any subclass) handle
+        Snapshot    % SolutionSnapshot (immutable value object)
+        
+        % Core solver data needed for recovery (Wave 2 encapsulation)
+        Elements    % cell[nElems x 1] of element handles
+        SctrMap     % [nElems x 48] global DOF mapping
     end
 
     properties (Access = private)
@@ -49,19 +53,33 @@ classdef FEM_Postprocessor_v2 < handle
     end
 
     methods
-        function obj = FEM_Postprocessor_v2(model, solver)
+        function obj = FEM_Postprocessor_v2(model, solverOrSnapshot)
             % FEM_POSTPROCESSOR  Construct a postprocessor.
             %
             % Usage:
-            %   Post = FEM_Postprocessor(Pre, Sol)
-            %   Post = FEM_Postprocessor(Sol.Model, Sol)   % equivalent
+            %   Post = FEM_Postprocessor_v2(Pre, Sol)
+            %   Post = FEM_Postprocessor_v2(Sol) % shortcut
+            
             if nargin == 1 && isa(model, 'FEM_Solver')
-                % Convenience: accept a solver as the only argument
-                obj.Solver = model;
-                obj.Model  = model.Model;
-            else
-                obj.Model  = model;
-                obj.Solver = solver;
+                sol = model;
+                obj.Model = sol.Model;
+                obj.Snapshot = sol.state.snapshot();
+                obj.Elements = sol.Elements;
+                obj.SctrMap  = sol.SctrMap;
+            elseif nargin == 2
+                obj.Model = model;
+                if isa(solverOrSnapshot, 'FEM_Solver')
+                    obj.Snapshot = solverOrSnapshot.state.snapshot();
+                    obj.Elements = solverOrSnapshot.Elements;
+                    obj.SctrMap  = solverOrSnapshot.SctrMap;
+                elseif isa(solverOrSnapshot, 'SolutionSnapshot')
+                    obj.Snapshot = solverOrSnapshot;
+                    % Note: Elements/SctrMap must be provided via 
+                    % separate mechanism or the solver reconstructed
+                    % if loading from disk.
+                else
+                    error('Postprocessor requires a Solver or SolutionSnapshot.');
+                end
             end
         end
     end
@@ -76,6 +94,7 @@ classdef FEM_Postprocessor_v2 < handle
         plotPlasticYield(obj, stepIdx)
         animateHistory(obj, nodeID, dofIdx)
         plotReactionDispCurve(obj, reactionHist, dispNodeID, dispDOF, stageIdx)
+        tf = hasArchive(obj, stepIdx)
     end
 
     % ====================================================================

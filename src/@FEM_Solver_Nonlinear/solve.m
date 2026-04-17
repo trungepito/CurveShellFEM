@@ -1,17 +1,20 @@
-function solve(obj, StageList)
+function solve(obj, stageList)
 % SOLVE  Unified multi-stage incremental analysis — NR and arc-length.
 %
 % For each stage, the active strategy (from Stage.getStrategy()) drives
 % the increment type. If strategy is an IncrementalStrategy subclass,
 % arc-length corrector logic runs. Otherwise, adaptive NR logic runs.
 %
-% This unified entry point replaces both FEM_Solver_Adaptive.solve() and
-% FEM_Solver_ArcLength.solve().
+% This unified entry point replaces the legacy adaptive and arc-length 
+% solver implementations.
 %
 % Syntax:
 %   Sol.solve({Stage1, Stage2, ...})
 
-fprintf('=== Nonlinear Analysis: %d stage(s) ===\n', length(StageList));
+% Validate solver options before proceeding
+obj.Options.validate();
+
+fprintf('=== Nonlinear Analysis: %d stage(s) ===\n', length(stageList));
 nDofs = size(obj.Model.Mesh.Nodes, 1) * 6;
 
 if isempty(obj.state)
@@ -19,11 +22,11 @@ if isempty(obj.state)
 end
 
 % Initialise tracking arrays for backward compatibility
-obj.History_Load = zeros(length(StageList), 1);
+obj.History_Load = zeros(length(stageList), 1);
 
-    for s = 1:length(StageList)
-        Stage = StageList{s};
-        fprintf('\n>>> Stage %d / %d\n', s, length(StageList));
+    for stageIdx = 1:length(stageList)
+        Stage = stageList{stageIdx};
+        fprintf('\n>>> Stage %d / %d\n', stageIdx, length(stageList));
         obj.state.beginStage();
 
         % Determine which driver to use based on strategy (A5 Unified Architecture)
@@ -45,10 +48,10 @@ obj.History_Load = zeros(length(StageList), 1);
         end
 
         % All stages now run through the unified strategy-driven driver
-        success = obj.solveIncrementalStage(Stage, strategy, s);
+        success = obj.solveIncrementalStage(Stage, strategy, stageIdx);
 
         if ~success
-            fprintf('!!! Analysis aborted at stage %d.\n', s);
+            fprintf('!!! Analysis aborted at stage %d.\n', stageIdx);
             return;
         end
     end

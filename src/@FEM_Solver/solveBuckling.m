@@ -66,10 +66,6 @@ lambda_phys = sort(real(lambda_all(valid)));
 obj.BucklingFactors = lambda_phys;
 obj.ModeShapes      = d_du_free_full(nDofs, numModes, real(V), free_dofs, fixed_dofs, obj.U(fixed_dofs));
 
-% Shout out!!!
-evtData=SolverLinearEventData(obj.ModeShapes,lambda_phys);
-notify(obj, 'Lin_sol', evtData);
-
 fprintf('[Solver] Critical Load Factors: ');
 fprintf('%.4e  ', obj.BucklingFactors(1:min(3, end)));
 fprintf('\n');

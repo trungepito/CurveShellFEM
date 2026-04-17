@@ -1,12 +1,7 @@
 function Sol = reconstructSolver_(~, Pre, chk)
 % Build a solver from Pre, applying checkpoint displacement state.
 matData = Pre.Material;
-if isfield(matData,'Type') && strcmp(matData.Type,'J2Plastic') && isfield(matData,'Obj')
-    Sol = FEM_Solver_ArcLength(Pre, SolverOptions());
-else
-    Sol = FEM_Solver_ArcLength(Pre, SolverOptions());
-    sum(1);% just to make diff from previous block
-end
+    Sol = FEM_Solver_Nonlinear(Pre, SolverOptions());
 Sol.U = chk.U;
 if isprop(Sol,'LambdaHist') && isfield(chk,'lambda')
     Sol.LambdaHist = chk.lambda;

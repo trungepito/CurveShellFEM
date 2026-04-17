@@ -1,4 +1,4 @@
-function [converged, U_out, reaction, iter] = newtonLoop(obj, F_ext, U_curr, fixed_dofs)
+function [converged, U_out, reaction, iter, TrialHist] = newtonLoop(obj, F_ext, U_curr, fixed_dofs)
 % NEWTONLOOP - Core iterative solver for any nonlinear problem.
 %
 % v3.1: Fixes applied (C2, C3, H3):
@@ -47,6 +47,7 @@ for iter = 1:max_iter
     [KT, F_int, TrialHist] = Assembler.tangent(U_curr, obj.Elements, obj.SctrMap, nDofs);
 
     % 2. Residual — R = F_int - F_ext, BC rows zeroed
+    % Convention: R = F_int - lambda*F_ext; positive when over-loaded
     R = F_int - F_ext;
     R(fixed_dofs) = 0;
 
@@ -81,9 +82,7 @@ for iter = 1:max_iter
 end
 
 % 7. Commit or discard
-if converged
-    % Atomic commit: only here does state change
-    obj.commitHistory(TrialHist);
+    % reaction = F_int(fixed_dofs); % F_int is the one from the LAST assembly
     reaction = F_int(fixed_dofs);
     U_out = U_curr;
 else

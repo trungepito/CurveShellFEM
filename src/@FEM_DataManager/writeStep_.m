@@ -23,9 +23,8 @@ obj.ensureDir_(stageDir);
 stepsFile = fullfile(stageDir, 'steps.mat');
 
 % --- write/append steps.mat ---
-% Strategy: store all steps inside a single struct 'steps' where
-% steps.(step_00001) = sd.  This avoids eval() while keeping
-% individual-variable load semantics via struct field access.
+% Strategy: store each step as a top-level variable step_00001, etc.
+% This allows O(1) appending using matfile() without loading existing steps.
 sd = struct('U',      stepData.U, ...
             'lambda', stepData.lambda, ...
             'iters',  stepData.iters, ...
@@ -33,26 +32,18 @@ sd = struct('U',      stepData.U, ...
             'arc_used', stepData.arc_used);
 varName = sprintf('step_%05d', double(n));
 
+header.nSteps      = double(n);
+header.stage_index = stageIdx;
+header.created     = datetime("now","Format","dd-MMM-uuuu HH:mm:ss");
+
 if ~exist(stepsFile, 'file')
-    header.nSteps      = double(n);
-    header.stage_index = stageIdx;
-    header.created     = datetime("now","Format","dd-MMM-uuuu HH:mm:ss");
-    steps.(varName)    = sd; %#ok<STRNU>
-    save(stepsFile, 'header', 'steps', '-v7.3');
+    save(stepsFile, 'header', '-v7.3');
+    mf = matfile(stepsFile, 'Writable', true);
+    mf.(varName) = sd;
 else
-    % Load existing steps struct, add new field, re-save.
-    % For large problems (>500 steps), consider switching to
-    % one-var-per-file layout or HDF5 (see INTEGRATION_NOTES).
-    tmp            = load(stepsFile, 'header', 'steps');
-    header         = tmp.header;
-    header.nSteps  = double(n);
-    if isfield(tmp, 'steps')
-        steps = tmp.steps;
-    else
-        steps = struct();
-    end
-    steps.(varName) = sd;
-    save(stepsFile, 'header', 'steps', '-v7.3');
+    mf = matfile(stepsFile, 'Writable', true);
+    mf.header = header;
+    mf.(varName) = sd;
 end
 
 % --- write GP history (plastic problems only) ---
@@ -60,17 +51,13 @@ if isfield(stepData, 'GPHistory') && ~isempty(stepData.GPHistory)
     gpFile = fullfile(stageDir, 'gp_history.mat');
     gpVar  = sprintf('gp_step_%05d', double(n));
     if ~exist(gpFile, 'file')
-        gpHistory.(gpVar) = stepData.GPHistory; %#ok<STRNU>
-        save(gpFile, 'gpHistory', '-v7.3');
+        gpDat = stepData.GPHistory;
+        save(gpFile, 'gpDat', '-v7.3'); % Use dummy gpDat if only one var
+        mfGP = matfile(gpFile, 'Writable', true);
+        mfGP.(gpVar) = stepData.GPHistory;
     else
-        tmp2 = load(gpFile, 'gpHistory');
-        if isfield(tmp2, 'gpHistory')
-            gpHistory = tmp2.gpHistory;
-        else
-            gpHistory = struct();
-        end
-        gpHistory.(gpVar) = stepData.GPHistory;
-        save(gpFile, 'gpHistory', '-v7.3');
+        mfGP = matfile(gpFile, 'Writable', true);
+        mfGP.(gpVar) = stepData.GPHistory;
     end
 end
 

@@ -6,14 +6,14 @@ function field = recoverField(obj, fieldName, stepIdx)
 %   - Stress/strain fields →  Stage 1 (GP recovery) + Stage 2 (SPR)
 %
 % Input:
-%   fieldName  string — see FEM_Postprocessor class header for full list
+%   fieldName  string — see FEM_Postprocessor_v2 class header for full list
 %   stepIdx    integer (1-based column of U_Hist) or [] for current step
 %
 % Output:
 %   field  [nNodes x 1] smoothed nodal values
 
 if nargin < 3 || isempty(stepIdx)
-    stepIdx = obj.Solver.StepCount;
+    stepIdx = obj.Snapshot.StepCount;
 end
 
 % ---------------------------------------------------------------
@@ -54,15 +54,15 @@ switch lower(fieldName)
         try
             field = obj.recoverNodalSPR(gpCell, fieldName);
         catch
-            warning('FEM_Postprocessor:sprFailed', ...
+            warning('FEM_Postprocessor_v2:sprFailed', ...
                 'SPR failed for field ''%s''. Using nodal average.', fieldName);
             field = obj.recoverNodalAverage(gpCell, fieldName);
         end
         return;
 
     otherwise
-        error('FEM_Postprocessor:unknownField', ...
-            'Unknown field ''%s''. See FEM_Postprocessor class header for valid names.', ...
+        error('FEM_Postprocessor_v2:unknownField', ...
+            'Unknown field ''%s''. See FEM_Postprocessor_v2 class header for valid names.', ...
             fieldName);
 end
 end

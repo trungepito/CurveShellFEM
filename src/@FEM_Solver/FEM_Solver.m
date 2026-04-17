@@ -44,7 +44,6 @@ classdef FEM_Solver < handle
     methods(Access = protected)
         commitHistory(obj, TrialHist)
         buildElementCache(obj)
-        [KT, F_int, TrialHist] = assembleTangentSystem(obj, U_curr)
         F_int = assembleinternalforceONLY(obj, U_trial)
     end
     

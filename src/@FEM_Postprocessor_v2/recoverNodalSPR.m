@@ -15,7 +15,7 @@ function nodalVals = recoverNodalSPR(obj, gpCell, fieldName)
 %
 % Reference: Zienkiewicz & Zhu (1992), Int. J. Numer. Methods Eng. 33.
 %
-% Input / Output: see FEM_Postprocessor class header.
+% Input / Output: see FEM_Postprocessor_v2 class header.
 
 Nodes    = obj.Model.Mesh.Nodes;
 Elements = double(obj.Model.Mesh.Elements);

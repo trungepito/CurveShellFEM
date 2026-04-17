@@ -11,9 +11,9 @@ function animateHistory(obj, nodeID, dofIdx)
 if nargin < 2, nodeID = []; end
 if nargin < 3, dofIdx = 3;  end
 
-nSteps = obj.Solver.StepCount;
+nSteps = obj.Snapshot.StepCount;
 if nSteps < 1
-    warning('FEM_Postprocessor:noHistory', 'No solution history available.');
+    warning('FEM_Postprocessor_v2:noHistory', 'No solution history available.');
     return;
 end
 

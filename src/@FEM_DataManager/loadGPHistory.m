@@ -7,12 +7,12 @@ if ~exist(gpFile, 'file')
     return;
 end
 varName = sprintf('gp_step_%05d', stepK);
-tmp = load(gpFile, 'gpHistory');
-if ~isfield(tmp,'gpHistory') || ~isfield(tmp.gpHistory, varName)
+tmp = load(gpFile, varName);
+if ~isfield(tmp, varName)
     warning('[DataMgr] No GP history at stage %d step %d.', ...
         stageIdx, stepK);
     gpData = {};
     return;
 end
-gpData = tmp.gpHistory.(varName);
+gpData = tmp.(varName);
 end

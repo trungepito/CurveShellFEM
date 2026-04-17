@@ -1,34 +1,17 @@
-function onStepConverged_(obj, evt, stageIdx, Sol)
+function onStepConverged_(obj, evt, stageIdx)
 % Called by addlistener after every converged step.
-% evt : SolverEventData (Time, StepNumber, U, LoadFactor, Iterations)
+% evt : SolverEventData (Time, StepNumber, U, LoadFactor, Iterations, PlasticHistory, ReactionData, ArcLengthUsed)
 
-stepData.U       = evt.U;
-stepData.lambda  = evt.LoadFactor;
-stepData.iters   = evt.Iterations;
-stepData.time    = evt.Time;
-stepData.arc_used = NaN;  % filled in if ArcLengthHistory available
+fprintf('[Debug] onStepConverged_ start\n');
+stepData.U          = evt.U;
+stepData.lambda     = evt.LoadFactor;
+stepData.iters      = evt.Iterations;
+stepData.time       = evt.Time;
+stepData.arc_used   = evt.ArcLengthUsed;
+stepData.GPHistory  = evt.PlasticHistory;
+stepData.reaction   = evt.ReactionData;
 
-if isprop(Sol, 'ArcLengthHistory') && ...
-   ~isempty(Sol.ArcLengthHistory)
-    stepData.arc_used = Sol.ArcLengthHistory(end);
-end
-
-% Plastic GP history (optional, can be large)
-if obj.SaveGPHistory && ~isempty(Sol.Elements)
-    nElems = length(Sol.Elements);
-    gpCell = cell(nElems, 1);
-    hasHist = false;
-    for e = 1:nElems
-        el = Sol.Elements{e};
-        if isprop(el, 'HistoryData') && ~isempty(el.HistoryData)
-            gpCell{e} = el.HistoryData;
-            hasHist   = true;
-        end
-    end
-    if hasHist
-        stepData.GPHistory = gpCell;
-    end
-end
-
+fprintf('[Debug] calling writeStep_\n');
 obj.writeStep_(stageIdx, stepData);
+fprintf('[Debug] onStepConverged_ end\n');
 end

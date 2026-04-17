@@ -26,10 +26,6 @@ nDofs = size(obj.Model.Mesh.Nodes, 1) * 6;
 obj.U = zeros(nDofs, 1);
 obj.U(f) = u_red;
 
-% Shout it out the solution event!
-evtData=SolverLinearEventData(obj.U);
-notify(obj, 'Lin_sol', evtData);
-
 fprintf('[Solver] Static Solution Complete.\n');
 
 end

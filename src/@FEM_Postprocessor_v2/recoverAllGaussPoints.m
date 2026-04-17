@@ -37,7 +37,7 @@ U = obj.getDisplacementAtStep(stepIdx);
 % the HistoryData that was committed at stepIdx, not the current one.
 % ---------------------------------------------------------------
 nElems = size(obj.Model.Mesh.Elements, 1);
-hasState = isprop(obj.Solver, 'state') && ~isempty(obj.Solver.state);
+snap = obj.Snapshot;
 
 % ---------------------------------------------------------------
 % Main loop
@@ -45,19 +45,19 @@ hasState = isprop(obj.Solver, 'state') && ~isempty(obj.Solver.state);
 gpCell = cell(nElems, 1);
 
 for e = 1:nElems
-    sctr  = obj.Solver.SctrMap(e, :);   % 48 global DOF indices
+    sctr  = obj.SctrMap(e, :);          % 48 global DOF indices
     u_el  = U(sctr);                    % 48x1 element DOF vector
-    elObj = obj.Solver.Elements{e};
+    elObj = obj.Elements{e};
     
     archiveFound = false;
-    if ~isempty(stepIdx) && stepIdx > 0 && hasState
-        if stepIdx <= obj.Solver.state.StepCount && ...
-           length(obj.Solver.state.PlasticHistoryArchive) >= stepIdx && ...
-           ~isempty(obj.Solver.state.PlasticHistoryArchive{stepIdx})
+    if ~isempty(stepIdx) && stepIdx > 0
+        if stepIdx <= snap.StepCount && ...
+           length(snap.PlasticHistoryArchive) >= stepIdx && ...
+           ~isempty(snap.PlasticHistoryArchive{stepIdx})
            
            % Use archived plastic state
             savedHD = elObj.HistoryData;
-            elObj.HistoryData = obj.Solver.state.PlasticHistoryArchive{stepIdx}{e};
+            elObj.HistoryData = snap.PlasticHistoryArchive{stepIdx}{e};
             gpCell{e} = elObj.recoverGaussPointData(u_el);
             elObj.HistoryData = savedHD;
             archiveFound = true;
@@ -67,6 +67,11 @@ for e = 1:nElems
     if ~archiveFound
         % Fallback for current step (live recovery) or missing archive
         % recoverGaussPointData will use live HistoryData if present.
+        if ~isempty(stepIdx) && stepIdx > 0 && isprop(elObj, 'HistoryData')
+            warning('FEM_Postprocessor_v2:missingArchive', ...
+                'Missing plastic archive for element %d at step %d. Using live/elastic state.', ...
+                e, stepIdx);
+        end
         gpCell{e} = elObj.recoverGaussPointData(u_el);
     end
 end

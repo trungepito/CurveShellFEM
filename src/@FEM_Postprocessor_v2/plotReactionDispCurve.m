@@ -1,14 +1,13 @@
 function plotReactionDispCurve(obj, reactionHist, dispNodeID, dispDOF, stageIdx)
 % PLOTREACTIONDISPCURVE  Load-displacement or reaction-displacement curve.
 %
-% Works with both FEM_Solver_Adaptive (ReactionHist cell) and
-% FEM_Solver_ArcLength (LambdaHist + U_Hist) outputs.
+% Works with any solver that populates obj.state.StepCount and obj.state.U_Hist.
 %
 % Syntax:
 %   % Adaptive solver — pass summed reaction history for stage s:
 %   Post.plotReactionDispCurve(Sol.ReactionHist{s}, nodeID, dofIdx, s)
 %
-%   % Arc-length solver — pass [] for reactionHist to use LambdaHist:
+%   % Nonlinear solver — pass [] for reactionHist to use LambdaHist:
 %   Post.plotReactionDispCurve([], nodeID, dofIdx, 1)
 %
 % Input:
@@ -19,31 +18,27 @@ function plotReactionDispCurve(obj, reactionHist, dispNodeID, dispDOF, stageIdx)
 
 if nargin < 5, stageIdx = []; end
 
-nSteps = obj.Solver.StepCount;
+nSteps = obj.Snapshot.StepCount;
 if nSteps < 1
-    warning('FEM_Postprocessor:noHistory', 'No history to plot.');
+    warning('FEM_Postprocessor_v2:noHistory', 'No history to plot.');
     return;
 end
 
 % ── Extract displacement history at the tracked DOF ──────────────
 dispDOF_global = (dispNodeID - 1)*6 + dispDOF;
-if size(obj.Solver.U_Hist, 2) < nSteps
-    nSteps = size(obj.Solver.U_Hist, 2);
-end
-disp_hist = obj.Solver.U_Hist(dispDOF_global, 1:nSteps);
+disp_hist = obj.Snapshot.U_Hist(dispDOF_global, :);
 
 % ── Determine load measure ────────────────────────────────────────
-useArcLength = isprop(obj.Solver, 'LambdaHist') && ...
-               ~isempty(obj.Solver.LambdaHist);
-
-if useArcLength
-    load_hist = obj.Solver.LambdaHist(:)';
-    load_hist = load_hist(1:min(nSteps, end));
+if ~isempty(obj.Snapshot.LambdaHist) && any(obj.Snapshot.LambdaHist ~= 0)
+    load_hist = obj.Snapshot.LambdaHist;
     yLabel    = 'Load factor \lambda';
-elseif isnumeric(reactionHist{stageIdx}) && ~isempty(reactionHist)
-    % Sum all reaction DOFs to get total reaction force
-    load_hist = sum(reactionHist{stageIdx}, 1);
-    load_hist = load_hist(1:min(nSteps, end));
+elseif ~isempty(obj.Snapshot.ReactionHist) && ~isempty(stageIdx) && ...
+       stageIdx <= length(obj.Snapshot.ReactionHist) && ...
+       ~isempty(obj.Snapshot.ReactionHist{stageIdx})
+       
+    % Sum all reaction DOFs for this stage to get total reaction force
+    % obj.Snapshot.ReactionHist{s} is a struct with .values [nFixed x nSteps]
+    load_hist = sum(obj.Snapshot.ReactionHist{stageIdx}.values, 1);
     yLabel    = 'Reaction force (sum)';
 else
     load_hist = 1:nSteps;

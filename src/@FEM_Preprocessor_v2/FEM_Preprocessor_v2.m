@@ -10,7 +10,7 @@ classdef FEM_Preprocessor_v2 < handle
 %   Pre.addKeypoint(0,0,0); Pre.addLine(1,2,'straight');
 %   Pre.meshAllPatches(10, 10);
 %
-% See also: FEM_Solver, FEM_Postprocessor
+% See also: FEM_Solver, FEM_Postprocessor_v2
     properties
         % --- TOPOLOGY DATA ---
         GeoPoints   % Nx3 Keypoints

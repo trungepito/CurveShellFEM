@@ -1,0 +1,308 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .root { padding: 1rem 0; }
+  h2 { font-size: 18px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.5rem; }
+  h3 { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.4rem; }
+  .section { margin-bottom: 2rem; }
+  .tab-row { display: flex; gap: 4px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); font-size: 13px; cursor: pointer; background: var(--color-background-secondary); color: var(--color-text-secondary); transition: background 0.15s; }
+  .tab.active { background: var(--color-background-primary); color: var(--color-text-primary); border-color: var(--color-border-primary); font-weight: 500; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .bug-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+  .bug-card.critical { border-left: 3px solid #E24B4A; }
+  .bug-card.high { border-left: 3px solid #BA7517; }
+  .bug-card.medium { border-left: 3px solid #3B8BD4; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: var(--border-radius-md); margin-bottom: 6px; }
+  .badge.critical { background: var(--color-background-danger); color: var(--color-text-danger); }
+  .badge.high { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .badge.medium { background: var(--color-background-info); color: var(--color-text-info); }
+  .badge.good { background: var(--color-background-success); color: var(--color-text-success); }
+  .code { font-family: var(--font-mono); font-size: 12px; background: var(--color-background-secondary); padding: 8px 10px; border-radius: var(--border-radius-md); margin: 8px 0; border: 0.5px solid var(--color-border-tertiary); white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+  .fix { font-size: 12px; color: var(--color-text-success); background: var(--color-background-success); padding: 6px 10px; border-radius: var(--border-radius-md); margin-top: 6px; }
+  .body-text { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+  .body-text strong { color: var(--color-text-primary); font-weight: 500; }
+  .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem; }
+  .metric .label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .metric .val { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .metric .sub { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+  .plan-step { display: flex; gap: 12px; margin-bottom: 1rem; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; margin-top: 2px; }
+  .step-num.p0 { background: var(--color-background-danger); color: var(--color-text-danger); }
+  .step-num.p1 { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .step-num.p2 { background: var(--color-background-info); color: var(--color-text-info); }
+  .step-body h3 { font-size: 13px; }
+  .arrow-btn { font-size: 12px; padding: 4px 10px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); cursor: pointer; background: transparent; color: var(--color-text-secondary); margin-top: 6px; }
+  .arrow-btn:hover { background: var(--color-background-secondary); }
+  .flow-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .flow-box { font-size: 12px; padding: 4px 10px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); white-space: nowrap; }
+  .flow-box.danger { border-color: #E24B4A; background: var(--color-background-danger); color: var(--color-text-danger); }
+  .flow-box.ok { border-color: #639922; background: var(--color-background-success); color: var(--color-text-success); }
+  .flow-arr { color: var(--color-text-tertiary); font-size: 14px; }
+  .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 1rem 0; }
+  table.compact { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.compact th { text-align: left; padding: 6px 8px; border-bottom: 0.5px solid var(--color-border-secondary); color: var(--color-text-secondary); font-weight: 500; }
+  table.compact td { padding: 6px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); vertical-align: top; }
+  table.compact tr:last-child td { border-bottom: none; }
+</style>
+<div class="root">
+  <div class="tab-row">
+    <div class="tab active" onclick="show('bugs')">Critical bugs</div>
+    <div class="tab" onclick="show('design')">Design analysis</div>
+    <div class="tab" onclick="show('dataflow')">Data flow map</div>
+    <div class="tab" onclick="show('plan')">Hardening plan</div>
+  </div>
+
+  <!-- BUGS PANEL -->
+  <div class="panel active" id="p-bugs">
+    <div class="metric-grid">
+      <div class="metric"><div class="label">Critical (P0)</div><div class="val" style="color:#E24B4A">6</div><div class="sub">correctness risk</div></div>
+      <div class="metric"><div class="label">High (P1)</div><div class="val" style="color:#BA7517">5</div><div class="sub">robustness risk</div></div>
+      <div class="metric"><div class="label">Medium (P2)</div><div class="val" style="color:#3B8BD4">4</div><div class="sub">quality risk</div></div>
+      <div class="metric"><div class="label">Files reviewed</div><div class="val">47</div><div class="sub">src + tests</div></div>
+    </div>
+
+    <div class="bug-card critical">
+      <div class="badge critical">P0 — correctness</div>
+      <h3>Residual sign inversion in linesearch</h3>
+      <p class="body-text" style="margin: 6px 0"><code>newtonLoop</code> defines <code>R = F_int - F_ext</code>. But <code>linesearch</code> computes <code>R_trial = F_ext_current - F_int_trial</code> — inverted sign. The monotonicity test <code>R_norm_new &lt; R_norm_old</code> uses the same magnitude so it passes numerically, but the Armijo condition and dot-product guard in <code>armijoSearch</code> use the sign-dependent quantity <code>dot(R, dU)</code>, which will fire with wrong polarity.</p>
+      <div class="code">// newtonLoop (line 49)
+R = F_int - F_ext;      // R = +residual
+
+// linesearch (line 15)
+R_trial = F_ext_current - F_int_trial;  // R = -residual ← BUG
+
+// armijoSearch (line 30) depends on sign:
+r_try <= (1 - c1*alpha) * r0   // norms equal → passes
+// but dot product guard breaks snap-through detection</div>
+      <div class="fix">Fix: unify to R = F_int - lambda*F_ext everywhere. Pass the residual from the caller, do not re-assemble inside line-search utilities.</div>
+    </div>
+
+    <div class="bug-card critical">
+      <div class="badge critical">P0 — correctness</div>
+      <h3>Double plastic history commit in adaptive solver</h3>
+      <p class="body-text" style="margin: 6px 0"><code>FEM_Solver_Adaptive/solveStage.m</code> line ~95 calls <code>solveStage → newtonLoop → commitHistory</code>, then immediately calls <code>obj.state.appendStep</code> which iterates elements and calls <code>recoverGaussPointData</code> again. For plastic elements this double-reads HistoryData after commit, producing a plastic strain state that is <strong>one step ahead</strong> of what was actually archived. This will silently corrupt all plastic post-processing.</p>
+      <div class="code">// solveStage.m line ~85-100
+[converged, U_trial, reaction, iters] = obj.newtonLoop(...)
+// ↑ newtonLoop already commits HistoryData via commitHistory()
+
+// Then 10 lines later:
+for e = 1:nElems
+  plasticSnap{e} = obj.Elements{e}.HistoryData; // reads COMMITTED state
+end
+obj.state.appendStep(U_converged, 0, plasticSnap, ...)</div>
+      <div class="fix">Fix: capture TrialHist BEFORE committing in newtonLoop; pass it out. commitHistory and snapshot must use the same TrialHist reference to guarantee consistency.</div>
+    </div>
+
+    <div class="bug-card critical">
+      <div class="badge critical">P0 — correctness</div>
+      <h3>solveIncrementalStage local function shadow</h3>
+      <p class="body-text" style="margin: 6px 0">The file <code>solveIncrementalStage.m</code> defines a local function <code>assembleForArcLength</code> at line ~39 as a closure AND redeclares a second function with the same name at the bottom of the file (lines ~290+). In MATLAB, the second definition shadows the closure in the while-loop body, meaning the stage driver calls the wrong assembler — one that uses <code>obj.F_ext_start</code> rather than the stage-local <code>F_ext_total</code>. This causes load-factor drift between stages.</p>
+      <div class="code">// Line ~39: closure captures F_ext_total correctly
+function [R,KT,fext,TH] = assembleForArcLength(u,lambda,~,~)
+  [KT_full,F_int,TH] = obj.assembleTangentSystem(u);
+  fext = F_ext_total;  // ← correct stage force
+  ...
+
+// Line ~290: LOCAL FUNCTION SHADOW — same name, different logic
+function [R,KT,fext_curr,TrialHist] = assembleForArcLength(obj,u,lambda)
+  F_ext_total = obj.F_ext_start + ...;  // ← stale global force</div>
+      <div class="fix">Fix: remove the duplicate local function entirely. Rename the bottom one or move it to a private method with a distinct name.</div>
+    </div>
+
+    <div class="bug-card critical">
+      <div class="badge critical">P0 — correctness</div>
+      <h3>SolutionState dependent properties bypass state object</h3>
+      <p class="body-text" style="margin: 6px 0"><code>FEM_Solver_Nonlinear</code> exposes dependent properties (<code>U_Hist</code>, <code>LambdaHist</code>, <code>StepCount</code> etc.) that delegate to <code>obj.state</code>. But <code>solveStage</code> (in the Adaptive solver) still writes directly to <code>obj.U_Hist</code>, <code>obj.History_Time</code>, and increments <code>obj.StepCount</code> directly — bypassing the <code>SolutionState</code> entirely. The two systems diverge immediately; postprocessors reading <code>Sol.state.snapshot()</code> will see empty history.</p>
+      <div class="code">// FEM_Solver_Adaptive/solveStage.m — direct field writes:
+obj.U_Hist(:, obj.StepCount) = obj.U;   // bypasses state
+obj.History_Time(obj.StepCount) = ...;  // bypasses state
+obj.StepCount = obj.StepCount + 1;      // bypasses state
+
+// FEM_Solver_Nonlinear — dependent property reads from state:
+function v = get.U_Hist(obj)
+  v = obj.state.U_Hist(:, 1:obj.state.StepCount); // sees nothing</div>
+      <div class="fix">Fix: Remove direct field access in solveStage. All history writes must go through obj.state.appendStep(). Delete the now-redundant direct obj.U_Hist property.</div>
+    </div>
+
+    <div class="bug-card critical">
+      <div class="badge critical">P0 — correctness</div>
+      <h3>ConvergenceMonitor dU input is empty in arc-length corrector</h3>
+      <p class="body-text" style="margin: 6px 0">In <code>solveIncrementalStage</code> line ~142 the corrector calls <code>mon.check(R_f, [], u_trial(free_dofs), fext_f, i)</code> — passing <code>[]</code> for <code>dU_free</code>. The monitor then computes <code>norm([]) = 0</code> for displacement/energy norm, making those criteria always trivially satisfied. If <code>NormType</code> is <code>'energy'</code> or <code>'displacement'</code> the solver reports spurious convergence at iteration 1.</p>
+      <div class="code">// solveIncrementalStage ~line 142
+if mon.check(R_f, [], u_trial(free_dofs), fext_f, i)  // ← dU = []
+
+// ConvergenceMonitor.check:
+case 'energy'
+  e_curr = abs(dU_free' * R_free);  // = abs([]' * R_f) = 0
+  // → err = 0 / dU0_R0 = 0 → converged = true on iter 1</div>
+      <div class="fix">Fix: compute dU_free = u_trial(free_dofs) - u_prev(free_dofs) and pass it. Cache u_prev at start of each corrector iteration.</div>
+    </div>
+
+    <div class="bug-card critical">
+      <div class="badge critical">P0 — memory / crash</div>
+      <h3>SolutionState grows U_Hist without trimming on rolling mode</h3>
+      <p class="body-text" style="margin: 6px 0"><code>SolutionState.growArrays</code> pre-allocates in chunks but the rolling-mode eviction at line ~96 zeroes old columns but never shrinks the array. After 10,000 steps with RollingWindow=100 the array is still 10,000 columns wide in memory. For large models (50k DOFs) this is ~4 GB wasted. The intent of rolling mode is entirely defeated.</p>
+      <div class="code">// SolutionState.m ~line 90 (rolling eviction)
+if strcmp(obj.MemoryMode, 'rolling') && s > obj.RollingWindow
+    oldest = s - obj.RollingWindow;
+    obj.U_Hist(:, oldest) = 0;   // zeroes but does NOT shrink!
+    // array still has s columns allocated</div>
+      <div class="fix">Fix: maintain a circular buffer of RollingWindow columns with a modular index. Alternatively, compact the array every RollingWindow steps.</div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="bug-card high">
+      <div class="badge high">P1 — robustness</div>
+      <h3>arcLengthStep tangent rebuild flag never resets</h3>
+      <p class="body-text" style="margin: 6px 0">In the corrector loop of <code>solveIncrementalStage</code>, <code>rebuild_tangent = true</code> is set at line ~165 when the iteration count exceeds 7 — but the subsequent <code>continue</code> skips the rest of the loop body including the final assembly. On the next iteration, the tangent is rebuilt but <code>rebuild_tangent</code> is set to <code>false</code> immediately after, so iterations 9+ will use a stale factorization again.</p>
+    </div>
+
+    <div class="bug-card high">
+      <div class="badge high">P1 — robustness</div>
+      <h3>DispControlStrategy ControlDOF_local only set in predictor</h3>
+      <p class="body-text" style="margin: 6px 0"><code>ControlDOF_local</code> is cached in <code>predictor()</code> but <code>constraint()</code> can be called before <code>predictor()</code> is called (e.g. in the initial residual evaluation). If called first, <code>ControlDOF_local = 0</code> and the constraint indexes <code>u_f(0)</code>, which throws an index error in MATLAB.</p>
+    </div>
+
+    <div class="bug-card high">
+      <div class="badge high">P1 — robustness</div>
+      <h3>Armijo search modifies U_curr through F_ext alias</h3>
+      <p class="body-text" style="margin: 6px 0"><code>armijoSearch</code> creates <code>U_try = U_curr</code> (a copy) then calls <code>assembleinternalforceONLY(U_try)</code>. If element objects have any side effects in their force computation (which plastic elements do via HistoryData probe paths), this mutates committed state during the search. The search is not side-effect-free.</p>
+    </div>
+
+    <div class="bug-card high">
+      <div class="badge high">P1 — data integrity</div>
+      <h3>FEM_DataManager listener holds hard reference to Sol</h3>
+      <p class="body-text" style="margin: 6px 0"><code>attachToSolver</code> creates a listener closure capturing <code>Sol</code> by reference. If the solver is cleared or replaced in a restart scenario while listeners are still live, the closure keeps the old solver object alive in memory (MATLAB handle class semantics), preventing GC and potentially writing stale data to the project.</p>
+    </div>
+
+    <div class="bug-card high">
+      <div class="badge high">P1 — correctness</div>
+      <h3>recoverAllGaussPoints uses live Elements after restart</h3>
+      <p class="body-text" style="margin: 6px 0">When <code>stepIdx</code> is not the current step, <code>recoverAllGaussPoints</code> swaps in archived HistoryData, calls <code>recoverGaussPointData</code>, then swaps the live state back. But this is not thread-safe and relies on <code>savedHD = elObj.HistoryData</code> being a value copy — which it is for structs. However if the archive is missing for any element, it silently falls back to live state, producing a mixed-step result with no warning.</p>
+    </div>
+  </div>
+
+  <!-- DESIGN PANEL -->
+  <div class="panel" id="p-design">
+    <h2 style="margin-bottom: 1rem">Design quality assessment</h2>
+
+    <table class="compact" style="margin-bottom: 1.5rem">
+      <thead><tr><th>Component</th><th>Verdict</th><th>Key issue</th></tr></thead>
+      <tbody>
+        <tr><td><code>FEM_Solver_Nonlinear</code></td><td><span class="badge good">Strong</span></td><td>Correct unification intent; dependent property pattern is clean</td></tr>
+        <tr><td><code>IncrementalStrategy</code> hierarchy</td><td><span class="badge good">Strong</span></td><td>Well-designed; RiksStrategy CSP sign detection is correct</td></tr>
+        <tr><td><code>SolutionState</code></td><td><span class="badge medium">Needs work</span></td><td>Rolling mode broken; plastic archive not GC-friendly</td></tr>
+        <tr><td><code>Assembler</code> (static)</td><td><span class="badge good">Strong</span></td><td>Stateless design is correct; triplet assembly is efficient</td></tr>
+        <tr><td><code>ConvergenceMonitor</code></td><td><span class="badge medium">Needs work</span></td><td>Energy/disp norm paths receive empty inputs; recommend() not wired</td></tr>
+        <tr><td><code>solveIncrementalStage</code></td><td><span class="badge high">High risk</span></td><td>580 LOC; 8 distinct concerns; function shadow bug</td></tr>
+        <tr><td><code>FEM_DataManager</code></td><td><span class="badge medium">Needs work</span></td><td>Step append is O(N) MAT re-read; listener memory leak</td></tr>
+        <tr><td><code>FEM_Postprocessor_v2</code></td><td><span class="badge good">Strong</span></td><td>SPR pipeline clean; cache invalidation correct</td></tr>
+        <tr><td><code>Material_J2Plastic</code></td><td><span class="badge good">Strong</span></td><td>Algorithmic tangent is correct; Newton loop for return mapping OK</td></tr>
+        <tr><td>Backward compat shims</td><td><span class="badge high">High risk</span></td><td>Two solve() entry points; direct field writes in adaptive path</td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-bottom: 0.5rem">Assembly path duplication</h3>
+    <p class="body-text" style="margin-bottom: 0.75rem">There are currently <strong>three distinct assembly call paths</strong> in active use, all producing nominally the same result but with different code surfaces:</p>
+    <div class="flow-row"><div class="flow-box ok">newtonLoop</div><div class="flow-arr">→</div><div class="flow-box ok">Assembler.tangent (stateless)</div></div>
+    <div class="flow-row"><div class="flow-box danger">solveIncrementalStage</div><div class="flow-arr">→</div><div class="flow-box danger">obj.assembleTangentSystem (method)</div><div class="flow-arr">→</div><div class="flow-box ok">Assembler.tangent</div></div>
+    <div class="flow-row"><div class="flow-box danger">solveStage (Adaptive)</div><div class="flow-arr">→</div><div class="flow-box danger">obj.assembleTangentSystem directly</div></div>
+    <p class="body-text" style="margin-top: 0.75rem">The intermediate method <code>assembleTangentSystem</code> is a thin wrapper that adds one indirection layer. It should be removed; all callers should use <code>Assembler.tangent</code> directly with explicit arguments. This makes dependencies visible and eliminates the hidden <code>obj.U</code> default argument.</p>
+
+    <hr class="divider">
+    <h3 style="margin-bottom: 0.5rem">solveIncrementalStage complexity breakdown</h3>
+    <p class="body-text" style="margin-bottom: 0.75rem">The method currently handles 8 distinct concerns. Each is a candidate for extraction:</p>
+    <table class="compact">
+      <thead><tr><th>Concern</th><th>Lines (approx)</th><th>Extraction target</th></tr></thead>
+      <tbody>
+        <tr><td>Stage setup &amp; BC partitioning</td><td>~30</td><td><code>prepareStage()</code></td></tr>
+        <tr><td>Assembly closure definition</td><td>~12</td><td><code>makeAssembler()</code> factory</td></tr>
+        <tr><td>Predictor evaluation</td><td>~25</td><td><code>strategy.predictor()</code> — already exists</td></tr>
+        <tr><td>Corrector Newton iterations</td><td>~90</td><td><code>correctorLoop()</code></td></tr>
+        <tr><td>L-BFGS direction computation</td><td>~30</td><td><code>lbfgsDirection()</code> — already extracted</td></tr>
+        <tr><td>Line-search dispatch</td><td>~15</td><td><code>lineSearch()</code> facade</td></tr>
+        <tr><td>Adaptive radius update</td><td>~10</td><td><code>strategy.adaptRadius()</code> — already exists</td></tr>
+        <tr><td>History archival &amp; events</td><td>~30</td><td><code>commitStep()</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DATA FLOW PANEL -->
+  <div class="panel" id="p-dataflow">
+    <h2 style="margin-bottom: 0.5rem">Current data flow (problem areas)</h2>
+    <p class="body-text" style="margin-bottom: 1rem">Red paths indicate inconsistency or correctness risk. Green paths are clean.</p>
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; margin-bottom: 1rem;">
+      <h3 style="margin-bottom: 0.75rem; font-size: 13px; color: var(--color-text-secondary)">WRITE PATH — per converged step</h3>
+      <div class="flow-row"><div class="flow-box ok">Assembler.tangent → TrialHist</div><div class="flow-arr">→</div><div class="flow-box ok">commitHistory(TrialHist)</div><div class="flow-arr">→</div><div class="flow-box ok">Elements[e].HistoryData updated</div></div>
+      <div class="flow-row" style="margin-top: 4px"><div class="flow-box danger">solveStage writes obj.U_Hist directly</div><div class="flow-arr">+</div><div class="flow-box ok">solveIncrementalStage calls state.appendStep</div><div class="flow-arr">→</div><div class="flow-box danger">two parallel histories diverge</div></div>
+      <div class="flow-row" style="margin-top: 4px"><div class="flow-box danger">DataManager.onStepConverged_ reads Elements after commit</div><div class="flow-arr">→</div><div class="flow-box danger">plastic state is already committed = off-by-one</div></div>
+    </div>
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; margin-bottom: 1rem;">
+      <h3 style="margin-bottom: 0.75rem; font-size: 13px; color: var(--color-text-secondary)">READ PATH — postprocessor</h3>
+      <div class="flow-row"><div class="flow-box ok">FEM_Postprocessor_v2.recoverField(fieldName, stepIdx)</div></div>
+      <div class="flow-row" style="margin-top: 4px"><div class="flow-box ok">→ getDisplacementAtStep(stepIdx)</div><div class="flow-arr">→</div><div class="flow-box ok">Solver.U_Hist (dependent prop → state)</div></div>
+      <div class="flow-row" style="margin-top: 4px"><div class="flow-box ok">→ recoverAllGaussPoints(stepIdx)</div><div class="flow-arr">→</div><div class="flow-box danger">if archive missing: falls back to live HistoryData silently</div></div>
+    </div>
+
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; margin-bottom: 1rem;">
+      <h3 style="margin-bottom: 0.75rem; font-size: 13px; color: var(--color-text-secondary)">DISK PATH — FEM_DataManager</h3>
+      <div class="flow-row"><div class="flow-box ok">initProject → preprocessor.mat (once)</div></div>
+      <div class="flow-row" style="margin-top:4px"><div class="flow-box danger">writeStep_: load steps.mat → add field → save entire file (O(N) per step!)</div></div>
+      <div class="flow-row" style="margin-top:4px"><div class="flow-box ok">checkpoint.mat: overwritten every N steps (correct)</div></div>
+      <div class="flow-row" style="margin-top:4px"><div class="flow-box danger">gp_history.mat: same O(N) pattern — unbounded growth for plastic runs</div></div>
+    </div>
+
+    <h3 style="margin-bottom: 0.5rem; margin-top: 1rem">Proposed data flow (target)</h3>
+    <table class="compact">
+      <thead><tr><th>Concern</th><th>Current owner</th><th>Proposed owner</th></tr></thead>
+      <tbody>
+        <tr><td>In-memory displacement history</td><td><code>obj.U_Hist</code> field + <code>SolutionState</code></td><td><code>SolutionState</code> only (delete field)</td></tr>
+        <tr><td>Plastic GP archive (RAM)</td><td>Scattered: solveStage + state + DataManager</td><td><code>SolutionState.PlasticHistoryArchive</code> only</td></tr>
+        <tr><td>Disk write per step</td><td>O(N) MAT load-modify-save</td><td>Append to HDF5 or matfile() streaming</td></tr>
+        <tr><td>Postprocessor access</td><td>Direct solver reference (mutable)</td><td><code>SolutionSnapshot</code> (immutable value)</td></tr>
+        <tr><td>Event → disk write</td><td>Listener captures live Sol</td><td>Listener receives <code>SolverEventData</code> only (no Sol ref)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PLAN PANEL -->
+  <div class="panel" id="p-plan">
+    <h2 style="margin-bottom: 1rem">Hardening plan</h2>
+
+    <h3 style="margin-bottom: 0.75rem; color: var(--color-text-danger)">Wave 1 — correctness (1 week)</h3>
+    <div class="plan-step"><div class="step-num p0">1</div><div class="step-body"><h3>Fix residual sign convention</h3><p class="body-text">Standardize <code>R = F_int - lambda·F_ext</code> in <em>every</em> file. Audit: newtonLoop, linesearch, armijoSearch, solveIncrementalStage closure, arcLengthStep. Add a unit test: <code>assert norm(R_newton + R_linesearch) &lt; tol</code>.</p><button class="arrow-btn" onclick="sendPrompt('Write the code to fix residual sign convention across newtonLoop, linesearch, and armijoSearch in CurveShellFEM')">Fix this ↗</button></div></div>
+    <div class="plan-step"><div class="step-num p0">2</div><div class="step-body"><h3>Remove assembleForArcLength function shadow</h3><p class="body-text">Delete the bottom local function in <code>solveIncrementalStage.m</code>. Rename the closure to <code>assembleFn</code> to avoid any future shadowing. Verify the stage-local <code>F_ext_total</code> is used throughout.</p><button class="arrow-btn" onclick="sendPrompt('Show me the exact lines to remove in solveIncrementalStage.m to fix the assembleForArcLength function shadow bug')">Fix this ↗</button></div></div>
+    <div class="plan-step"><div class="step-num p0">3</div><div class="step-body"><h3>Unify history writes through SolutionState</h3><p class="body-text">Delete <code>obj.U_Hist</code>, <code>obj.History_Time</code> as stored properties; keep only as dependent. Remove all direct field writes in <code>solveStage</code>. Pipe <code>solveStage</code> through <code>state.appendStep()</code>.</p></div></div>
+    <div class="plan-step"><div class="step-num p0">4</div><div class="step-body"><h3>Fix double plastic commit</h3><p class="body-text">In <code>newtonLoop</code>, return <code>TrialHist</code> to the caller and do NOT call <code>commitHistory</code> internally. Let <code>solveStage</code> / <code>solveIncrementalStage</code> commit exactly once per converged step, then snapshot the pre-commit <code>TrialHist</code> for archival.</p></div></div>
+    <div class="plan-step"><div class="step-num p0">5</div><div class="step-body"><h3>Pass dU_free to ConvergenceMonitor</h3><p class="body-text">In the corrector body, maintain <code>u_prev = u_trial</code> before each update. Compute <code>dU_free = u_trial(free_dofs) - u_prev(free_dofs)</code> and pass to <code>mon.check()</code>. This enables energy and displacement norm paths.</p></div></div>
+    <div class="plan-step"><div class="step-num p0">6</div><div class="step-body"><h3>Fix SolutionState rolling mode circular buffer</h3><p class="body-text">Replace grow-and-zero with a fixed <code>[nDofs × RollingWindow]</code> preallocated ring. Write pointer = <code>mod(StepCount-1, RollingWindow) + 1</code>. Expose a <code>getU(globalStep)</code> that maps global step index to ring position.</p></div></div>
+
+    <hr class="divider">
+    <h3 style="margin-bottom: 0.75rem; color: var(--color-text-warning)">Wave 2 — data manager (1 week)</h3>
+    <div class="plan-step"><div class="step-num p1">7</div><div class="step-body"><h3>Replace O(N) MAT append with matfile() streaming</h3><p class="body-text">Use MATLAB's <code>matfile()</code> with <code>Writable=true</code> to append columns to <code>U_hist</code> and <code>lambda_hist</code> without loading the full file. For GP history, write one variable per step (<code>gp_NNNNN</code>) to avoid the struct-load-modify-save cycle.</p><button class="arrow-btn" onclick="sendPrompt('Write a replacement for FEM_DataManager writeStep_ that uses matfile() for O(1) append instead of O(N) load-modify-save')">Implement ↗</button></div></div>
+    <div class="plan-step"><div class="step-num p1">8</div><div class="step-body"><h3>Decouple DataManager listener from Sol reference</h3><p class="body-text">Change <code>onStepConverged_</code> to receive only <code>SolverEventData</code> (already contains <code>U</code>, <code>lambda</code>, <code>iters</code>). Move the plastic GP snapshot capture into the solver's <code>notify()</code> call — pack it into the event data. The listener then only writes; it never reads the solver.</p></div></div>
+    <div class="plan-step"><div class="step-num p1">9</div><div class="step-body"><h3>Enforce snapshot-only postprocessor access</h3><p class="body-text">Change <code>FEM_Postprocessor_v2</code> constructor to accept <code>SolutionSnapshot</code> instead of a live solver handle. This enforces the immutability boundary and prevents silent live-state reads during historical step queries.</p></div></div>
+    <div class="plan-step"><div class="step-num p1">10</div><div class="step-body"><h3>Add missing-archive explicit error in recoverAllGaussPoints</h3><p class="body-text">Replace the silent fallback to live state with an explicit <code>warning</code> or <code>error</code> when the archive is missing for a requested historical step. Provide a <code>useCurrentState</code> option flag for the caller to opt in to live-state fallback explicitly.</p></div></div>
+
+    <hr class="divider">
+    <h3 style="margin-bottom: 0.75rem; color: var(--color-text-info)">Wave 3 — decomposition &amp; governance (2 weeks)</h3>
+    <div class="plan-step"><div class="step-num p2">11</div><div class="step-body"><h3>Extract correctorLoop from solveIncrementalStage</h3><p class="body-text">Target: 8 responsibilities → 5 private methods. The corrector Newton body (lines ~100–200) becomes <code>correctorLoop(u0, l0, strategy, ds, assembleFn, free_dofs)</code> returning <code>[u, l, F_int, TrialHist, converged, iters]</code>. No obj mutation inside the loop — pure function semantics.</p></div></div>
+    <div class="plan-step"><div class="step-num p2">12</div><div class="step-body"><h3>Remove deprecated solver subclasses</h3><p class="body-text">Delete <code>FEM_Solver_ArcLength</code> and <code>FEM_Solver_Adaptive</code> after migration metrics (no usages in tests/examples). The warning + delegate pattern is correct but creates dead code surface.</p></div></div>
+    <div class="plan-step"><div class="step-num p2">13</div><div class="step-body"><h3>Nonlinear replay determinism test</h3><p class="body-text">Add a test that runs a 10-step snap-through, serializes <code>SolutionSnapshot</code>, reloads, re-runs post-processing, and asserts identical stress fields. This guards the commit/snapshot/archive pipeline end-to-end.</p><button class="arrow-btn" onclick="sendPrompt('Write a determinism replay test for CurveShellFEM that verifies SolutionSnapshot reproduces identical stress fields after serialization')">Write test ↗</button></div></div>
+  </div>
+</div>
+<script>
+function show(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('p-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

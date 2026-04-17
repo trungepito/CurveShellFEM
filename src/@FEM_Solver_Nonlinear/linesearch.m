@@ -12,18 +12,17 @@ function eta = linesearch(obj, U_old, dU, R, F_ext_current, free_dofs)
     while line_iter <= 5
         U_trial = U_old + eta * dU;
         F_int_trial = obj.assembleinternalforceONLY(U_trial);
-        R_trial = F_ext_current - F_int_trial;
+        R_trial = F_int_trial - F_ext_current;
         R_norm_new = norm(R_trial(free_dofs));
 
-        if R_norm_new < R_norm_old
+        s_trial = dot(R_trial(free_dofs), dU(free_dofs));
+        if R_norm_new < R_norm_old || abs(s_trial) <= controlf * abs(s0)
             if line_iter > 1
                 fprintf(' [Standard LS accepted eta=%.3f] ', eta);
             end
             break; 
-            else  
-            s = dot(R_trial(:), eta * dU(:));
-            eta = abs(s0) / (abs(s0) + abs(s));
-            if abs(s) <= controlf * abs(s0), break; end
+        else  
+            eta = abs(s0) / (abs(s0) + abs(s_trial));
             fprintf(' [Standard LS backtracking... eta=%.3f] ', eta);
         end
         line_iter = line_iter + 1;

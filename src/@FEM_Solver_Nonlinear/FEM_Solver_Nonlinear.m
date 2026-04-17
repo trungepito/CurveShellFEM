@@ -78,7 +78,7 @@ classdef FEM_Solver_Nonlinear < FEM_Solver
     
     methods (Access = protected)
         % Core Newton-Raphson Loop
-        [converged, U_out, reaction, iter] = newtonLoop(obj, F_ext, U_start, fixed_dofs)
+        [converged, U_out, reaction, iter, TrialHist] = newtonLoop(obj, F_ext, U_start, fixed_dofs)
         
         % Stage drivers
         success = solveIncrementalStage(obj, Stage, strategy, s)

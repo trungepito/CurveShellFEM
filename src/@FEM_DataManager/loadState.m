@@ -10,19 +10,16 @@ end
 fprintf('[DataMgr] Loading state from %s...\n', filename);
 data = load(filename);
 matData = data.MaterialData;
-Pre = FEM_Preprocessor(matData.E, matData.nu, matData.t);
+Pre = FEM_Preprocessor_v2(matData.E, matData.nu, matData.t);
 Pre.Mesh = data.Mesh;
 Pre.BCs  = data.BCs;
 Pre.Loads = data.Loads;
 
-% Reconstruct solver — FEM_Solver_Plastic does not exist; plastic analysis
-% uses FEM_Solver_Adaptive with a J2Plastic material on the preprocessor.
-if isfield(data, 'GlobalHistory') && ~isempty(data.GlobalHistory)
-    % Rewire plastic material onto the preprocessor
+    % Reconstruct solver — nonlinear analysis uses FEM_Solver_Nonlinear
     if isfield(matData, 'Yield') && isfield(matData, 'H')
         Pre.setMaterialPlastic(matData.Yield, matData.H);
     end
-    Sol = FEM_Solver_Adaptive(Pre, SolverOptions());
+    Sol = FEM_Solver_Nonlinear(Pre, SolverOptions());
     % Restore plastic GP history to element cache
     if isprop(Sol, 'Elements') && ~isempty(Sol.Elements)
         nElems = length(Sol.Elements);
