@@ -48,7 +48,7 @@ function [KT, F_int, NewHistory] = computeTangentStiffnessAndForce(obj, u_elem)
             
             for k = 1:5
                 zeta = zeta_pts(k);
-                w_thick = zeta_wts(k) * h; 
+                w_thick = zeta_wts(k) * h/2; % important fix!!!
                 z_phys = zeta * h / 2;
                 pt_counter = pt_counter + 1;
                 
@@ -80,9 +80,9 @@ function [KT, F_int, NewHistory] = computeTangentStiffnessAndForce(obj, u_elem)
                 D_mat = D_mat + Dep_new * (z_phys^2) * w_thick;
             end
             
-            k_s = 5/6; % Shear Correction
-            Q_res = D_s * gamma * h * k_s;
-            Ks_contrib = Bs0' * (D_s * h * k_s) * Bs0;
+            
+            Q_res = D_s * gamma * h ;
+            Ks_contrib = Bs0' * (D_s * h ) * Bs0;
             
             fe = (Bm_total' * Res_N + Bb0' * Res_M + Bs0' * Q_res) * detJ * w_area;
             F_int = F_int + fe;

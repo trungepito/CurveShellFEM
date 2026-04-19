@@ -15,17 +15,17 @@ Pre.Mesh = data.Mesh;
 Pre.BCs  = data.BCs;
 Pre.Loads = data.Loads;
 
-    % Reconstruct solver — nonlinear analysis uses FEM_Solver_Nonlinear
-    if isfield(matData, 'Yield') && isfield(matData, 'H')
-        Pre.setMaterialPlastic(matData.Yield, matData.H);
-    end
+% Reconstruct solver — nonlinear analysis uses FEM_Solver_Nonlinear
+if isfield(matData, 'Yield') && isfield(matData, 'H')
+    Pre.setMaterialPlastic(matData.Yield, matData.H);
+
     Sol = FEM_Solver_Nonlinear(Pre, SolverOptions());
     % Restore plastic GP history to element cache
     if isprop(Sol, 'Elements') && ~isempty(Sol.Elements)
         nElems = length(Sol.Elements);
         for e = 1:nElems
             if isprop(Sol.Elements{e}, 'HistoryData') && ...
-               e <= length(data.GlobalHistory)
+                    e <= length(data.GlobalHistory)
                 Sol.Elements{e}.HistoryData = data.GlobalHistory{e};
             end
         end

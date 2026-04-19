@@ -16,7 +16,9 @@ elseif strcmp(L.type, 'arc')
     Radius = norm(R_vec1);
     % let assume the angle is always smaller than 90, this is not true but
     % let use it for now, in the upgrade version this one should be changed
-    angle=acos(R_vec1*R_vec2'/(norm(R_vec1)*norm(R_vec2)));
+    % angle=acos(R_vec1*R_vec2'/(norm(R_vec1)*norm(R_vec2)));
+    % new angle cal using atan ange =[0,180] now!
+    angle=atan2(norm(cross(R_vec1,R_vec2)), dot(R_vec1,R_vec2)); 
     v3=cross(R_vec1,R_vec2);v3=v3/norm(v3);
     v1=R_vec1/Radius;
     v2=cross(v3,v1);v2=v2/norm(v2);

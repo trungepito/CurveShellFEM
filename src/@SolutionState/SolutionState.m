@@ -99,9 +99,9 @@ classdef SolutionState < handle
             % Rolling mode: evict old data to free memory
             if strcmp(obj.MemoryMode, 'rolling') && s > obj.RollingWindow
                 oldest = s - obj.RollingWindow;
-                obj.U_Hist(:, oldest) = 0;
-                obj.LambdaHist(oldest) = 0;
-                obj.ArcLengthHist(oldest) = 0;
+                obj.U_Hist(:, oldest) = [];
+                obj.LambdaHist(oldest) =[];
+                obj.ArcLengthHist(oldest) = [];
                 if obj.HasPlastic
                     obj.PlasticHistoryArchive{oldest} = [];
                 end

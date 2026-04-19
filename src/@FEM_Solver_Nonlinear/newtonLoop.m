@@ -37,11 +37,11 @@ mon.reset(F_ext(free_dofs));
 
 converged  = false;
 TrialHist  = [];
-reaction   = [];
-iters      = 0;
+% reaction   = [];
+% iters      = 0;
 
 for iter = 1:max_iter
-    iters = iter;
+    % iters = iter;
 
     % 1. Assemble (pure function — no side effects) (C2)
     [KT, F_int, TrialHist] = Assembler.tangent(U_curr, obj.Elements, obj.SctrMap, nDofs);
@@ -80,7 +80,7 @@ for iter = 1:max_iter
     % 6. Update (trial only — not committed to obj.U)
     U_curr(free_dofs) = U_curr(free_dofs) + eta * dU_f;
 end
-
+if converged
 % 7. Commit or discard
     % reaction = F_int(fixed_dofs); % F_int is the one from the LAST assembly
     reaction = F_int(fixed_dofs);

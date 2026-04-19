@@ -11,6 +11,8 @@ NewHist = []; % Default for elastic
 if nargin < 2 || isempty(u_el)
     % LINEAR MODE: Return Elastic Stiffness and Zero Force
     Ke_mixed = obj.computeStiffnessMatrix();
+    % [Ke_mixed, ~, ~] = obj.computeTangentStiffnessAndForce(zeros(40,1));
+    % the unify concept, need to be check
     fe_mixed = zeros(40, 1);
 else
     % NONLINEAR MODE: Compute Tangent (Ke + Kg) and Internal Force

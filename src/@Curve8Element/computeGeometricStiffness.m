@@ -24,7 +24,7 @@ N_vec = res.MembraneForces; % [Nx; Ny; Nxy]
 for i = 1:nGauss
     for j = 1:nGauss
         xi = g_points(i); eta = g_points(j);
-        w=g_weights(j)*g_weights(j);
+        w=g_weights(i)*g_weights(j);
         [N, der] = obj.fmisoq8(xi, eta);
         % 1. Reconstruct Jacobian and Local Frame (Copy logic from Stiffness)
         % J_vec = [0,0,0; 0,0,0];

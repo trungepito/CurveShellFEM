@@ -6,7 +6,7 @@ Ke = zeros(40, 40); % 8 nodes * 5 DOFs
 % though 2x2 is sometimes used for shear to prevent locking.
 % Here we use 3x3 for simplicity
 [D_mb, D_s] = obj.getConstitutiveMatrix();
-Gpoint_mb=3;% number of gauss points for Membrane and Bending term
+Gpoint_mb=2;% number of gauss points for Membrane and Bending term
 Gpoint_s=2; % number of gauss points for Shear term
 
 % Membrane and Bending term integration
